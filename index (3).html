@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Kitchen Stock Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Archivo+Black&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#17211B;
+    --bg:#EEF2ED;
+    --card:#FFFFFF;
+    --line:#D8DFD7;
+    --green:#2E6B46;
+    --green-soft:#E3EFE7;
+    --amber:#B97A0C;
+    --amber-soft:#FBEED3;
+    --red:#B3271E;
+    --red-soft:#FBE3E1;
+    --muted:#5C685E;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Archivo',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    font-size:16px;
+    line-height:1.45;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 14px 110px}
+
+  /* Header */
+  header{
+    padding:22px 2px 14px;
+  }
+  header .eyebrow{
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--green);font-weight:600;
+  }
+  header h1{
+    font-family:'Archivo Black',sans-serif;
+    font-size:26px;line-height:1.1;margin-top:2px;
+  }
+
+  /* Tabs */
+  nav.tabs{
+    position:fixed;bottom:0;left:0;right:0;z-index:50;
+    background:var(--card);border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;
+    padding:8px 6px calc(10px + env(safe-area-inset-bottom));
+  }
+  nav.tabs button{
+    flex:1;background:none;border:none;font-family:inherit;
+    font-size:13px;font-weight:600;color:var(--muted);
+    padding:8px 4px;border-radius:10px;cursor:pointer;
+  }
+  nav.tabs button.active{color:var(--green);background:var(--green-soft)}
+
+  .panel{display:none}
+  .panel.show{display:block}
+
+  /* Cards & fields */
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px;margin-bottom:14px;
+  }
+  label.fld{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  input[type=text],input[type=password],select,textarea{
+    width:100%;font-family:inherit;font-size:16px;
+    padding:12px;border:1px solid var(--line);border-radius:10px;
+    background:#FCFDFC;color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid var(--green);outline-offset:1px}
+  .row2{display:flex;gap:10px}
+  .row2>div{flex:1}
+
+  /* Progress */
+  .progress{
+    position:sticky;top:0;z-index:40;
+    background:var(--bg);padding:10px 2px 8px;
+  }
+  .progress .bar{
+    height:8px;background:#DCE3DB;border-radius:99px;overflow:hidden;
+  }
+  .progress .fill{height:100%;width:0%;background:var(--green);border-radius:99px;transition:width .25s}
+  .progress .txt{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+
+  /* Category */
+  .cat{margin:18px 0 8px}
+  .cat h2{
+    font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);font-weight:800;
+    display:flex;align-items:center;gap:10px;
+  }
+  .cat h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* Ingredient row */
+  .item{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;margin-bottom:8px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .item.unmarked{border-left:4px solid #C7CFC6}
+  .item.ok{border-left:4px solid var(--green)}
+  .item.low{border-left:4px solid var(--amber);background:#FFFDF6}
+  .item.out{border-left:4px solid var(--red);background:#FFF9F8}
+  .item .name{font-weight:600;font-size:15px;flex:1;min-width:0;overflow-wrap:break-word}
+  .seg{display:flex;gap:4px;flex-shrink:0}
+  .seg button{
+    font-family:inherit;font-weight:700;font-size:12px;
+    border:1px solid var(--line);background:#F6F8F5;color:var(--muted);
+    padding:9px 10px;border-radius:9px;cursor:pointer;min-width:44px;
+  }
+  .seg button.on-ok{background:var(--green);border-color:var(--green);color:#fff}
+  .seg button.on-low{background:var(--amber);border-color:var(--amber);color:#fff}
+  .seg button.on-out{background:var(--red);border-color:var(--red);color:#fff}
+
+  /* Buttons */
+  .btn{
+    display:block;width:100%;font-family:inherit;font-weight:800;font-size:17px;
+    padding:15px;border-radius:12px;border:none;cursor:pointer;
+    background:var(--green);color:#fff;
+  }
+  .btn:disabled{background:#B9C6BC;cursor:not-allowed}
+  .btn.ghost{background:none;border:1.5px solid var(--line);color:var(--ink);font-weight:600;font-size:15px;padding:12px}
+  .btn.danger{background:none;border:1.5px solid var(--red);color:var(--red);font-weight:600;font-size:15px;padding:12px}
+  .btn+.btn{margin-top:10px}
+
+  .hint{font-size:13px;color:var(--muted);margin-top:8px}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;margin:2px 3px 2px 0}
+  .pill.low{background:var(--amber-soft);color:var(--amber)}
+  .pill.out{background:var(--red-soft);color:var(--red)}
+  .pill.ok{background:var(--green-soft);color:var(--green)}
+
+  /* Success screen */
+  .success{
+    text-align:center;padding:44px 18px;
+  }
+  .success .tick{
+    width:74px;height:74px;border-radius:50%;background:var(--green);
+    color:#fff;font-size:38px;line-height:74px;margin:0 auto 16px;
+  }
+  .success h2{font-family:'Archivo Black',sans-serif;font-size:22px;margin-bottom:8px}
+
+  /* History */
+  .hcard{cursor:pointer}
+  .hcard .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .hcard .when{font-weight:800;font-size:15px}
+  .hcard .who{font-size:13px;color:var(--muted)}
+  .hcard .detail{display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px;font-size:14px}
+  .hcard.open .detail{display:block}
+
+  .warnbox{
+    background:var(--amber-soft);border:1px solid #E8CE96;border-radius:10px;
+    padding:10px 12px;font-size:13.5px;margin-bottom:12px;color:#6b4a08;
+  }
+  .okbox{
+    background:var(--green-soft);border:1px solid #BFDCC9;border-radius:10px;
+    padding:10px 12px;font-size:13.5px;margin-bottom:12px;color:var(--green);
+  }
+
+  /* Settings ingredient manager */
+  .mini{display:flex;gap:8px;margin-top:8px}
+  .mini input{flex:1}
+  .mini button{
+    font-family:inherit;font-weight:700;border:none;background:var(--ink);color:#fff;
+    border-radius:9px;padding:0 16px;cursor:pointer;font-size:14px;
+  }
+  .tag{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#F3F6F2;border:1px solid var(--line);border-radius:99px;
+    padding:6px 6px 6px 12px;margin:3px 3px 3px 0;font-size:13.5px;font-weight:600;
+  }
+  .tag button{
+    border:none;background:#DDE4DC;color:var(--ink);border-radius:50%;
+    width:20px;height:20px;line-height:18px;cursor:pointer;font-size:13px;padding:0;
+  }
+  details.catset{margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+  details.catset summary{
+    padding:11px 12px;font-weight:700;font-size:14px;cursor:pointer;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  details.catset summary::after{content:"▾";color:var(--muted)}
+  details.catset .body{padding:0 12px 12px}
+  .delcat{font-size:12px;color:var(--red);background:none;border:none;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow" id="bizName">Restaurant Stock</div>
+    <h1 id="pageTitle">Shift-start stock check</h1>
+  </header>
+
+  <!-- ============ CHECK TAB ============ -->
+  <div class="panel show" id="panel-check">
+
+    <div class="card" id="staffCard">
+      <label class="fld" for="staffSel">Who is checking?</label>
+      <select id="staffSel"></select>
+      <p class="hint">Mark every ingredient below. OK = enough stock · Low = running out · Out = finished.</p>
+    </div>
+
+    <div class="progress" id="progressWrap">
+      <div class="txt"><span id="progTxt">0 items checked</span><span id="progPct">0%</span></div>
+      <div class="bar"><div class="fill" id="progFill"></div></div>
+    </div>
+
+    <div id="checkList"></div>
+
+    <div style="margin-top:18px">
+      <button class="btn" id="submitBtn" disabled>Send report</button>
+      <p class="hint" id="submitHint">Enter your name and mark all items to send.</p>
+    </div>
+  </div>
+
+  <!-- ============ SUCCESS ============ -->
+  <div class="panel" id="panel-success">
+    <div class="card success">
+      <div class="tick">✓</div>
+      <h2>Report sent</h2>
+      <p class="hint" id="successMsg"></p>
+      <div style="margin-top:22px">
+        <button class="btn" id="pdfBtn">Download PDF report</button>
+        <button class="btn ghost" id="sharePdfBtn" style="display:none">Share PDF (WhatsApp etc.)</button>
+        <button class="btn ghost" onclick="startNewCheck()">Start a new check</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HISTORY TAB ============ -->
+  <div class="panel" id="panel-history">
+    <div id="historyList"></div>
+    <button class="btn ghost" id="exportBtn">Download history (CSV)</button>
+    <button class="btn danger" id="clearHistBtn">Clear history on this device</button>
+    <p class="hint">History is saved on this device only. Email reports are your permanent record.</p>
+  </div>
+
+  <!-- ============ SETTINGS TAB ============ -->
+  <div class="panel" id="panel-settings">
+
+    <div class="card">
+      <label class="fld" for="setBiz">Restaurant name</label>
+      <input type="text" id="setBiz" placeholder="e.g. SN Bistro">
+      <div style="height:12px"></div>
+      <label class="fld" for="setKey">Web3Forms access key (for email notifications)</label>
+      <input type="text" id="setKey" placeholder="Paste your access key here">
+      <p class="hint">Get a free key at <b>web3forms.com</b> — enter the email address where you want to receive reports, and the key is emailed to you. Reports go to that address.</p>
+      <div style="height:12px"></div>
+      <label class="fld" for="setPin">Manager PIN (locks History &amp; Settings)</label>
+      <input type="password" id="setPin" placeholder="e.g. 4-digit code" inputmode="numeric" autocomplete="off">
+      <p class="hint">Once a PIN is set, the History and Settings tabs ask for it before opening — staff only see the Stock check tab. Leave blank for no lock. If you forget it, the only reset is clearing the browser's site data, which also erases history and settings — so keep it somewhere safe.</p>
+      <div style="height:12px"></div>
+      <button class="btn" id="saveSettingsBtn">Save settings</button>
+      <p class="hint" id="settingsStatus"></p>
+    </div>
+
+    <div class="card">
+      <label class="fld">Staff list</label>
+      <p class="hint" style="margin:0 0 10px">These names appear in the dropdown on the Stock check tab. Press ✕ to remove a name.</p>
+      <div id="staffTags"></div>
+      <div class="mini">
+        <input type="text" id="newStaffName" placeholder="Add a staff name">
+        <button id="addStaffBtn">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="fld">Ingredient list</label>
+      <p class="hint" style="margin:0 0 10px">Tap a category to open it. Add or remove items any time — changes apply immediately.</p>
+      <div id="ingManager"></div>
+      <div class="mini">
+        <input type="text" id="newCatName" placeholder="New category name">
+        <button id="addCatBtn">Add</button>
+      </div>
+      <div style="height:14px"></div>
+      <button class="btn danger" id="resetIngBtn">Reset ingredient list to default</button>
+    </div>
+  </div>
+
+</div>
+
+<nav class="tabs">
+  <button class="active" data-tab="check">Stock check</button>
+  <button data-tab="history">History</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+<script>
+/* ================= DATA ================= */
+const DEFAULT_INGREDIENTS = {
+  "Proteins": ["Chicken","Beef","Goat","Fish (tilapia)","Eggs","Sausages","Bacon"],
+  "Vegetables & fruit": ["Tomatoes","Onions","Bell peppers","Chilli pepper","Garlic","Ginger","Lettuce","Cucumber","Carrots","Cabbage","Avocado","Plantain","Lemons / limes"],
+  "Staples": ["Rice","Pasta / spaghetti","Bread","Flour","Yam","Gari","Beans"],
+  "Dairy": ["Milk","Butter","Cheese","Yoghurt"],
+  "Pantry": ["Cooking oil","Palm oil","Tomato paste","Salt","Sugar","Stock cubes","Soy sauce","Mayonnaise","Ketchup","Mixed spices"],
+  "Beverages": ["Coffee","Tea bags","Fruit juice","Soft drinks","Bottled water","Beer"],
+  "Supplies": ["Cooking gas","Napkins / serviettes","Foil / cling film","Takeaway packs","Washing-up liquid"]
+};
+
+const store = {
+  get(k, fallback){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+};
+
+let ingredients = store.get('ssc_ingredients', null) || JSON.parse(JSON.stringify(DEFAULT_INGREDIENTS));
+let settings    = store.get('ssc_settings', { biz:'', key:'', staff:[] });
+if(!Array.isArray(settings.staff)) settings.staff = [];
+let history     = store.get('ssc_history', []);
+let statusMap   = {};   // "Category||Item" -> ok|low|out
+
+/* ================= HELPERS ================= */
+const $ = id => document.getElementById(id);
+const allItems = () => Object.entries(ingredients).flatMap(([c, arr]) => arr.map(i => c + '||' + i));
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+/* ================= TABS (with manager PIN lock) ================= */
+let unlocked = false;
+document.querySelectorAll('nav.tabs button').forEach(b=>{
+  b.onclick = ()=>{
+    const t = b.dataset.tab;
+    if((t==='history' || t==='settings') && settings.pin && !unlocked){
+      const p = prompt('Manager PIN:');
+      if(p === null) return;
+      if(p !== settings.pin){ alert('Incorrect PIN.'); return; }
+      unlocked = true;
+    }
+    if(t==='check') unlocked = false;   // re-lock when returning to the staff screen
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+    $('panel-' + t).classList.add('show');
+    if(t==='history') renderHistory();
+    if(t==='settings') renderSettings();
+    window.scrollTo(0,0);
+  };
+});
+
+/* ================= STAFF DROPDOWN ================= */
+function renderStaffSel(){
+  const sel = $('staffSel');
+  const current = sel.value;
+  sel.innerHTML = '';
+  if(!settings.staff.length){
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = 'No staff added yet — go to Settings';
+    sel.appendChild(o);
+  }else{
+    const p = document.createElement('option');
+    p.value = ''; p.textContent = 'Select your name…';
+    sel.appendChild(p);
+    settings.staff.forEach(n=>{
+      const o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      sel.appendChild(o);
+    });
+    if(settings.staff.includes(current)) sel.value = current;
+  }
+  updateProgress();
+}
+
+/* ================= CHECK LIST ================= */
+function renderCheckList(){
+  const host = $('checkList');
+  host.innerHTML = '';
+  Object.entries(ingredients).forEach(([cat, items])=>{
+    if(!items.length) return;
+    const catDiv = document.createElement('div');
+    catDiv.className = 'cat';
+    catDiv.innerHTML = '<h2>' + esc(cat) + '</h2>';
+    host.appendChild(catDiv);
+    items.forEach(item=>{
+      const key = cat + '||' + item;
+      const st  = statusMap[key];
+      const row = document.createElement('div');
+      row.className = 'item ' + (st || 'unmarked');
+      row.innerHTML =
+        '<div class="name">' + esc(item) + '</div>' +
+        '<div class="seg">' +
+          '<button data-s="ok"  class="' + (st==='ok' ?'on-ok' :'') + '">OK</button>' +
+          '<button data-s="low" class="' + (st==='low'?'on-low':'') + '">Low</button>' +
+          '<button data-s="out" class="' + (st==='out'?'on-out':'') + '">Out</button>' +
+        '</div>';
+      row.querySelectorAll('.seg button').forEach(btn=>{
+        btn.onclick = ()=>{
+          statusMap[key] = btn.dataset.s;
+          renderCheckList();
+          updateProgress();
+        };
+      });
+      host.appendChild(row);
+    });
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  const total = allItems().length;
+  const done  = allItems().filter(k=>statusMap[k]).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  $('progTxt').textContent = done + ' of ' + total + ' items checked';
+  $('progPct').textContent = pct + '%';
+  $('progFill').style.width = pct + '%';
+  const nameOk = $('staffSel').value !== '';
+  const ready  = nameOk && done === total && total > 0;
+  $('submitBtn').disabled = !ready;
+  $('submitHint').textContent = ready ? 'Ready to send.' :
+    (!nameOk ? 'Select your name and mark all items to send.' :
+     'Mark all items to send — ' + (total-done) + ' remaining.');
+}
+$('staffSel').addEventListener('change', updateProgress);
+
+/* ================= SUBMIT ================= */
+$('submitBtn').onclick = async ()=>{
+  const btn = $('submitBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const now   = new Date();
+  const staff = $('staffSel').value;
+  const low = [], out = [];
+  allItems().forEach(k=>{
+    const [cat, item] = k.split('||');
+    if(statusMap[k]==='low') low.push(item);
+    if(statusMap[k]==='out') out.push(item);
+  });
+
+  // Repeat alerts: items low/out in 3 or more consecutive checks (including this one)
+  const repeats = [];
+  out.concat(low).forEach(item=>{
+    let count = 1;
+    for(const r of history){
+      if((r.low||[]).includes(item) || (r.out||[]).includes(item)) count++;
+      else break;
+    }
+    if(count >= 3) repeats.push({item, count});
+  });
+
+  const record = {
+    ts: now.toISOString(), staff,
+    total: allItems().length, low, out
+  };
+
+  // Build email body
+  const biz = settings.biz || 'Restaurant';
+  let body = 'STOCK CHECK — ' + biz + '\n';
+  body += 'Date: ' + now.toLocaleString('en-GB') + '\n';
+  body += 'Staff: ' + staff + '\n';
+  body += 'Items checked: ' + record.total + '\n\n';
+  body += out.length ? ('🔴 OUT OF STOCK (' + out.length + '):\n- ' + out.join('\n- ') + '\n\n') : '🔴 Out of stock: none\n\n';
+  body += low.length ? ('🟡 RUNNING LOW (' + low.length + '):\n- ' + low.join('\n- ') + '\n') : '🟡 Running low: none\n';
+  if(repeats.length){
+    body += '\n⚠️ REPEAT ALERTS — low/out in 3 or more consecutive checks:\n';
+    repeats.forEach(r=>{ body += '- ' + r.item + ' (' + r.count + ' checks in a row)\n'; });
+  }
+
+  let sent = false, errMsg = '';
+  if(settings.key){
+    try{
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'Accept':'application/json'},
+        body: JSON.stringify({
+          access_key: settings.key,
+          subject: '[' + biz + '] Stock check — ' + out.length + ' out, ' + low.length + ' low',
+          from_name: staff + ' — ' + biz + ' stock check',
+          message: body
+        })
+      });
+      const data = await res.json();
+      sent = !!data.success;
+      if(!sent) errMsg = data.message || 'Sending failed.';
+    }catch(e){ errMsg = 'No internet connection or sending failed.'; }
+  }else{
+    errMsg = 'No notification key set up yet (see Settings).';
+  }
+
+  record.sent = sent;
+  history.unshift(record);
+  if(history.length > 200) history.length = 200;
+  store.set('ssc_history', history);
+  lastRecord = record;
+  lastRepeats = repeats;
+
+  $('successMsg').innerHTML = (sent
+    ? 'The report was emailed to the manager.<br>' + out.length + ' item(s) out of stock, ' + low.length + ' running low.'
+    : '<b>Saved on this device, but the email was not sent.</b><br>' + esc(errMsg) + '<br>Please tell the manager directly about: ' + esc((out.concat(low)).join(', ') || 'nothing — all stock OK'))
+    + (repeats.length ? '<br><b style="color:var(--red)">⚠ ' + repeats.length + ' item(s) have been low/out for 3+ checks in a row.</b>' : '');
+  $('sharePdfBtn').style.display = (navigator.share && navigator.canShare) ? 'block' : 'none';
+
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+  $('panel-success').classList.add('show');
+  btn.textContent = 'Send report';
+  window.scrollTo(0,0);
+};
+
+function startNewCheck(){
+  statusMap = {};
+  $('staffSel').value = '';
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+  $('panel-check').classList.add('show');
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+  document.querySelector('nav.tabs button[data-tab=check]').classList.add('active');
+  renderCheckList();
+  window.scrollTo(0,0);
+}
+
+/* ================= PDF REPORT ================= */
+let lastRecord = null, lastRepeats = [];
+
+function repeatsForIndex(i){
+  // Consecutive low/out counts for the record at history[i]
+  const rec = history[i], reps = [];
+  (rec.out||[]).concat(rec.low||[]).forEach(item=>{
+    let count = 1;
+    for(let j = i + 1; j < history.length; j++){
+      if((history[j].low||[]).includes(item) || (history[j].out||[]).includes(item)) count++;
+      else break;
+    }
+    if(count >= 3) reps.push({item, count});
+  });
+  return reps;
+}
+
+function buildPdf(rec, reps){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const d = new Date(rec.ts);
+  const biz = settings.biz || 'Restaurant';
+  let y = 20;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(23,33,27);
+  doc.text(biz, 14, y); y += 8;
+  doc.setFontSize(12); doc.setFont('helvetica','normal'); doc.setTextColor(92,104,94);
+  doc.text('Shift-start stock check report', 14, y); y += 10;
+  doc.setDrawColor(216,223,215); doc.line(14, y, 196, y); y += 9;
+
+  doc.setTextColor(23,33,27); doc.setFontSize(11);
+  doc.text('Date: ' + d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + '  ·  ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), 14, y); y += 7;
+  doc.text('Checked by: ' + rec.staff + '   ·   Items checked: ' + rec.total, 14, y); y += 12;
+
+  const list = (title, items, rgb) => {
+    if(y > 265){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+    doc.text(title, 14, y); y += 7;
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(23,33,27);
+    if(!items.length){ doc.text('None', 18, y); y += 7; }
+    items.forEach(t=>{
+      if(y > 280){ doc.addPage(); y = 20; }
+      doc.text('•  ' + t, 18, y); y += 6.5;
+    });
+    y += 6;
+  };
+
+  list('OUT OF STOCK (' + (rec.out||[]).length + ')', rec.out||[], [179,39,30]);
+  list('RUNNING LOW (' + (rec.low||[]).length + ')', rec.low||[], [185,122,12]);
+
+  if(reps.length){
+    if(y > 250){ doc.addPage(); y = 20; }
+    doc.setFillColor(251,227,225);
+    doc.rect(14, y - 5, 182, 9 + reps.length * 6.5, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(179,39,30);
+    doc.text('REPEAT ALERTS — low/out in 3+ consecutive checks', 16, y + 1); y += 8;
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    reps.forEach(r=>{
+      if(y > 280){ doc.addPage(); y = 20; }
+      doc.text('•  ' + r.item + '  (' + r.count + ' checks in a row — procure urgently)', 18, y); y += 6.5;
+    });
+    y += 6;
+  }
+
+  if(!(rec.out||[]).length && !(rec.low||[]).length){
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(46,107,70);
+    doc.text('All items in stock — nothing to procure.', 14, y); y += 8;
+  }
+
+  doc.setFontSize(9); doc.setTextColor(150,155,150);
+  doc.text('Generated by ' + biz + ' stock check system', 14, 290);
+  return doc;
+}
+
+function pdfFilename(rec){
+  const d = new Date(rec.ts);
+  return 'stock-check-' + d.toISOString().slice(0,10) + '-' + d.toTimeString().slice(0,5).replace(':','') + '.pdf';
+}
+
+$('pdfBtn').onclick = ()=>{
+  if(!lastRecord) return;
+  try{ buildPdf(lastRecord, lastRepeats).save(pdfFilename(lastRecord)); }
+  catch(e){ alert('Could not create the PDF — check the internet connection and try again.'); }
+};
+
+$('sharePdfBtn').onclick = async ()=>{
+  if(!lastRecord) return;
+  try{
+    const blob = buildPdf(lastRecord, lastRepeats).output('blob');
+    const file = new File([blob], pdfFilename(lastRecord), {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Stock check report'});
+    }else{
+      buildPdf(lastRecord, lastRepeats).save(pdfFilename(lastRecord));
+    }
+  }catch(e){ /* user cancelled share */ }
+};
+function renderHistory(){
+  const host = $('historyList');
+  if(!history.length){
+    host.innerHTML = '<div class="card"><p class="hint" style="margin:0">No checks recorded on this device yet. Completed checks will appear here.</p></div>';
+    return;
+  }
+  host.innerHTML = '';
+  history.forEach((r, idx)=>{
+    const d = new Date(r.ts);
+    const reps = repeatsForIndex(idx);
+    const card = document.createElement('div');
+    card.className = 'card hcard';
+    const flags =
+      (r.out.length ? '<span class="pill out">' + r.out.length + ' out</span>' : '') +
+      (r.low.length ? '<span class="pill low">' + r.low.length + ' low</span>' : '') +
+      (reps.length ? '<span class="pill out">⚠ ' + reps.length + ' repeat</span>' : '') +
+      (!r.out.length && !r.low.length ? '<span class="pill ok">All OK</span>' : '') +
+      (r.sent === false ? '<span class="pill out">email failed</span>' : '');
+    card.innerHTML =
+      '<div class="top"><div><div class="when">' + d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) + ' · ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) + '</div>' +
+      '<div class="who">' + esc(r.staff) + ' · ' + r.total + ' items</div></div>' +
+      '<div>' + flags + '</div></div>' +
+      '<div class="detail">' +
+        (r.out.length ? '<b>Out of stock:</b> ' + esc(r.out.join(', ')) + '<br>' : '') +
+        (r.low.length ? '<b>Running low:</b> ' + esc(r.low.join(', ')) + '<br>' : '') +
+        (reps.length ? '<b style="color:var(--red)">Repeat alerts:</b> ' + esc(reps.map(x=>x.item + ' (' + x.count + '×)').join(', ')) + '<br>' : '') +
+        (!r.out.length && !r.low.length ? 'Everything was in stock.<br>' : '') +
+        '<button class="btn ghost pdf-one" style="margin-top:10px">Download this report as PDF</button>' +
+      '</div>';
+    card.querySelector('.top').onclick = ()=>card.classList.toggle('open');
+    card.querySelector('.pdf-one').onclick = (e)=>{
+      e.stopPropagation();
+      try{ buildPdf(r, reps).save(pdfFilename(r)); }
+      catch(err){ alert('Could not create the PDF — check the internet connection and try again.'); }
+    };
+    host.appendChild(card);
+  });
+}
+
+$('exportBtn').onclick = ()=>{
+  let csv = 'Date,Time,Staff,Items checked,Out of stock,Running low,Email sent\n';
+  history.slice().reverse().forEach(r=>{
+    const d = new Date(r.ts);
+    const q = s => '"' + String(s).replace(/"/g,'""') + '"';
+    csv += [d.toLocaleDateString('en-GB'), d.toLocaleTimeString('en-GB'), q(r.staff), r.total, q(r.out.join('; ')), q(r.low.join('; ')), r.sent?'yes':'no'].join(',') + '\n';
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'stock-check-history.csv';
+  a.click();
+};
+
+$('clearHistBtn').onclick = ()=>{
+  if(confirm('Delete all saved history on this device? Email reports already sent are not affected.')){
+    history = []; store.set('ssc_history', history); renderHistory();
+  }
+};
+
+/* ================= SETTINGS ================= */
+function renderSettings(){
+  $('setBiz').value = settings.biz || '';
+  $('setKey').value = settings.key || '';
+  $('setPin').value = settings.pin || '';
+  renderStaffTags();
+  renderIngManager();
+}
+
+function renderStaffTags(){
+  const host = $('staffTags');
+  host.innerHTML = settings.staff.length ? '' : '<p class="hint" style="margin:0 0 4px">No names yet — add your team below.</p>';
+  settings.staff.forEach(name=>{
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.innerHTML = esc(name) + ' <button title="Remove">✕</button>';
+    t.querySelector('button').onclick = ()=>{
+      settings.staff = settings.staff.filter(n=>n!==name);
+      store.set('ssc_settings', settings);
+      renderStaffTags(); renderStaffSel();
+    };
+    host.appendChild(t);
+  });
+}
+
+$('addStaffBtn').onclick = ()=>{
+  const v = $('newStaffName').value.trim();
+  if(v && !settings.staff.includes(v)){
+    settings.staff.push(v);
+    store.set('ssc_settings', settings);
+    $('newStaffName').value = '';
+    renderStaffTags(); renderStaffSel();
+  }
+};
+$('newStaffName').addEventListener('keydown', e=>{ if(e.key==='Enter') $('addStaffBtn').click(); });
+
+$('saveSettingsBtn').onclick = ()=>{
+  settings.biz = $('setBiz').value.trim();
+  settings.key = $('setKey').value.trim();
+  settings.pin = $('setPin').value.trim();
+  store.set('ssc_settings', settings);
+  $('bizName').textContent = settings.biz || 'Restaurant Stock';
+  $('settingsStatus').textContent = 'Saved ✓'
+    + (settings.key ? '' : ' — note: no access key entered, so email reports are OFF.')
+    + (settings.pin ? ' History & Settings are now PIN-locked.' : ' No PIN set — History & Settings are open to everyone.');
+};
+
+function renderIngManager(){
+  const host = $('ingManager');
+  host.innerHTML = '';
+  Object.entries(ingredients).forEach(([cat, items])=>{
+    const det = document.createElement('details');
+    det.className = 'catset';
+    det.innerHTML = '<summary>' + esc(cat) + ' <span style="font-weight:400;color:var(--muted);font-size:12px">(' + items.length + ')</span></summary>';
+    const body = document.createElement('div');
+    body.className = 'body';
+    const tags = document.createElement('div');
+    items.forEach(item=>{
+      const t = document.createElement('span');
+      t.className = 'tag';
+      t.innerHTML = esc(item) + ' <button title="Remove">✕</button>';
+      t.querySelector('button').onclick = ()=>{
+        ingredients[cat] = ingredients[cat].filter(i=>i!==item);
+        saveIngredients();
+      };
+      tags.appendChild(t);
+    });
+    body.appendChild(tags);
+    const mini = document.createElement('div');
+    mini.className = 'mini';
+    mini.innerHTML = '<input type="text" placeholder="Add item to ' + esc(cat) + '"><button>Add</button>';
+    mini.querySelector('button').onclick = ()=>{
+      const v = mini.querySelector('input').value.trim();
+      if(v && !ingredients[cat].includes(v)){ ingredients[cat].push(v); saveIngredients(); }
+    };
+    mini.querySelector('input').addEventListener('keydown', e=>{ if(e.key==='Enter') mini.querySelector('button').click(); });
+    body.appendChild(mini);
+    const del = document.createElement('button');
+    del.className = 'delcat';
+    del.textContent = 'Delete this category';
+    del.onclick = ()=>{
+      if(confirm('Delete "' + cat + '" and all its items?')){ delete ingredients[cat]; saveIngredients(); }
+    };
+    body.appendChild(del);
+    det.appendChild(body);
+    host.appendChild(det);
+  });
+}
+
+function saveIngredients(){
+  store.set('ssc_ingredients', ingredients);
+  statusMap = {};           // reset any in-progress check to keep counts honest
+  renderIngManager();
+  renderCheckList();
+}
+
+$('addCatBtn').onclick = ()=>{
+  const v = $('newCatName').value.trim();
+  if(v && !ingredients[v]){ ingredients[v] = []; $('newCatName').value=''; saveIngredients(); }
+};
+
+$('resetIngBtn').onclick = ()=>{
+  if(confirm('Replace your ingredient list with the default list? Your custom items will be lost.')){
+    ingredients = JSON.parse(JSON.stringify(DEFAULT_INGREDIENTS));
+    saveIngredients();
+  }
+};
+
+/* ================= INIT ================= */
+$('bizName').textContent = settings.biz || 'Restaurant Stock';
+renderCheckList();
+renderStaffSel();
+</script>
+</body>
+</html>
