@@ -7,6 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Archivo+Black&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  /* ============================================================
+     BACKEND SETTINGS — paste your two Supabase values here.
+     Find them in Supabase: Project Settings → API.
+     Leave both blank to keep running in LOCAL mode (this device only).
+     ============================================================ */
+  window.SB_URL = "";      // e.g. https://abcdefgh.supabase.co
+  window.SB_ANON_KEY = ""; // the long "anon public" key
+</script>
 <style>
   :root{
     --ink:#17211B;
@@ -189,6 +199,76 @@
   details.catset summary::after{content:"▾";color:var(--muted)}
   details.catset .body{padding:0 12px 12px}
   .delcat{font-size:12px;color:var(--red);background:none;border:none;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit}
+
+  /* Login */
+  .login-wrap{max-width:420px;margin:6vh auto 0;padding:6px}
+  .login-card{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:28px 22px;box-shadow:0 10px 30px rgba(23,33,27,.08);
+  }
+  .login-logo{
+    width:56px;height:56px;border-radius:14px;background:var(--green);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;
+  }
+  .login-card h2{font-family:'Archivo Black',sans-serif;font-size:22px;text-align:center;margin-bottom:4px}
+  .login-card .sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px}
+  .login-err{background:var(--red-soft);color:var(--red);border-radius:9px;padding:9px 12px;font-size:13.5px;font-weight:600;margin-bottom:12px;display:none}
+  .login-err.show{display:block}
+
+  /* Admin toolbar */
+  .admin-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 0 12px}
+  .admin-top .who{font-size:13px;color:var(--muted)}
+  .admin-top .who b{color:var(--ink)}
+  .logout{background:none;border:1px solid var(--line);color:var(--ink);font-family:inherit;font-weight:600;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer}
+
+  /* Period chips */
+  .chips{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+  .chips button{
+    font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted);padding:8px 14px;border-radius:99px;cursor:pointer;
+  }
+  .chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* KPI grid */
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px}
+  .kpi .k-label{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .kpi .k-val{font-family:'Archivo Black',sans-serif;font-size:23px;line-height:1.1;margin-top:4px}
+  .kpi .k-sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .kpi.wide{grid-column:1 / -1}
+  .kpi.accent{background:var(--green);border-color:var(--green)}
+  .kpi.accent .k-label{color:#CDE7D6}
+  .kpi.accent .k-val,.kpi.accent .k-sub{color:#fff}
+
+  /* Chart card */
+  .chartcard{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px;margin-bottom:14px}
+  .chartcard h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:12px}
+  .chartcard svg{width:100%;height:auto;display:block}
+  .legend{display:flex;gap:16px;margin-top:10px;font-size:12.5px;color:var(--muted);font-weight:600}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+  /* Split bar */
+  .splitbar{height:26px;border-radius:7px;overflow:hidden;display:flex;background:#EDEFEC}
+  .splitbar span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:#fff;min-width:0}
+
+  /* Data table */
+  .dt{width:100%;border-collapse:collapse;font-size:14px}
+  .dt th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
+  .dt th.num,.dt td.num{text-align:right}
+  .dt td{padding:9px 8px;border-bottom:1px solid var(--line)}
+  .dt tr:last-child td{border-bottom:none}
+  .dt .rowmain{cursor:pointer}
+  .dt .rowmain:hover{background:#F6F8F5}
+  .dt .item-nm{font-weight:600}
+  .dt .drill{background:#F8FAF7;font-size:13px;color:var(--muted)}
+  .dt .drill td{padding:8px 10px}
+  .badge-n{display:inline-block;min-width:22px;text-align:center;font-weight:800;font-size:12px;padding:2px 7px;border-radius:99px}
+  .badge-n.out{background:var(--red-soft);color:var(--red)}
+  .badge-n.low{background:var(--amber-soft);color:var(--amber)}
+  .badge-n.zero{color:#B7BEB6}
+  .empty-note{text-align:center;color:var(--muted);font-size:14px;padding:26px 10px}
+  .sect-h{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:20px 2px 10px;display:flex;align-items:center;gap:10px}
+  .sect-h::after{content:"";flex:1;height:1px;background:var(--line)}
 </style>
 </head>
 <body>
@@ -197,6 +277,7 @@
   <header>
     <div class="eyebrow" id="bizName">Restaurant Stock</div>
     <h1 id="pageTitle">Shift-end stock check</h1>
+    <div id="modeBadge" style="display:none;font-size:11px;font-weight:700;margin-top:6px;padding:4px 9px;border-radius:99px;width:fit-content"></div>
   </header>
 
   <!-- ============ CHECK TAB ============ -->
@@ -248,10 +329,12 @@
 
   <!-- ============ HISTORY TAB ============ -->
   <div class="panel" id="panel-history">
+    <div class="admin-top">
+      <div class="who">Every check on this device</div>
+      <button class="logout" onclick="adminLogout()">Log out</button>
+    </div>
     <div id="historyList"></div>
-    <button class="btn ghost" id="exportBtn">Download history (CSV)</button>
-    <button class="btn danger" id="clearHistBtn">Clear history on this device</button>
-    <p class="hint">History is saved on this device only. Email reports are your permanent record.</p>
+    <p class="hint">Tap any check to expand it or download it as a PDF. Exports live in the Reports tab.</p>
   </div>
 
   <!-- ============ SETTINGS TAB ============ -->
@@ -265,12 +348,20 @@
       <input type="text" id="setKey" placeholder="Paste one or more keys, separated by commas">
       <p class="hint">Get a free key at <b>web3forms.com</b> — enter the email address where you want to receive reports, and the key is emailed to you. <b>To send reports to more than one person:</b> create one free key per email address, then paste all the keys here separated by commas. Each report is sent to every key's email.</p>
       <div style="height:12px"></div>
-      <label class="fld" for="setPin">Manager PIN (locks History &amp; Settings)</label>
-      <input type="password" id="setPin" placeholder="e.g. 4-digit code" inputmode="numeric" autocomplete="off">
-      <p class="hint">Once a PIN is set, the History and Settings tabs ask for it before opening — staff only see the Stock check tab. Leave blank for no lock. If you forget it, the only reset is clearing the browser's site data, which also erases history and settings — so keep it somewhere safe.</p>
-      <div style="height:12px"></div>
       <button class="btn" id="saveSettingsBtn">Save settings</button>
       <p class="hint" id="settingsStatus"></p>
+    </div>
+
+    <div class="card" id="adminAccountsCard">
+      <label class="fld">Manager accounts</label>
+      <p class="hint" style="margin:0 0 10px">People who can sign in to view the dashboard, reports, history and settings. Each has their own PIN. There must always be at least one.</p>
+      <div id="adminTags"></div>
+      <div class="mini">
+        <input type="text" id="newAdminName" placeholder="Manager name">
+        <input type="password" id="newAdminPin" placeholder="PIN" inputmode="numeric" style="max-width:110px">
+        <button id="addAdminBtn">Add</button>
+      </div>
+      <p class="hint" id="cloudAdminNote" style="display:none">In cloud mode, manager accounts are created in your Supabase dashboard under <b>Authentication → Users</b>. That keeps sign-in secure across every device.</p>
     </div>
 
     <div class="card">
@@ -296,12 +387,104 @@
     </div>
   </div>
 
+  <!-- ============ LOGIN ============ -->
+  <div class="panel" id="panel-login">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-logo">🔒</div>
+        <h2 id="loginTitle">Manager sign in</h2>
+        <p class="sub" id="loginSub">Enter your manager credentials to view reports.</p>
+        <div class="login-err" id="loginErr"></div>
+
+        <div id="loginForm">
+          <label class="fld" for="loginUser">Manager</label>
+          <select id="loginUser"></select>
+          <div style="height:12px"></div>
+          <label class="fld" for="loginPin">PIN</label>
+          <input type="password" id="loginPin" inputmode="numeric" placeholder="Enter PIN" autocomplete="off">
+          <div style="height:16px"></div>
+          <button class="btn" id="loginBtn">Sign in</button>
+        </div>
+
+        <div id="cloudLoginForm" style="display:none">
+          <label class="fld" for="cloudEmail">Email</label>
+          <input type="text" id="cloudEmail" inputmode="email" placeholder="you@example.com" autocomplete="username">
+          <div style="height:12px"></div>
+          <label class="fld" for="cloudPass">Password</label>
+          <input type="password" id="cloudPass" placeholder="Enter password" autocomplete="current-password">
+          <div style="height:16px"></div>
+          <button class="btn" id="cloudLoginBtn">Sign in</button>
+          <p class="hint">Manager accounts are created in your Supabase dashboard (Authentication → Users). This login syncs data across every device.</p>
+        </div>
+
+        <div id="firstRunForm" style="display:none">
+          <p class="hint" style="margin-bottom:10px">No manager account exists yet. Create the first one — you'll use it to view analytics and reports.</p>
+          <label class="fld" for="frName">Your name</label>
+          <input type="text" id="frName" placeholder="e.g. Kwame (Manager)" autocomplete="off">
+          <div style="height:12px"></div>
+          <label class="fld" for="frPin">Choose a PIN</label>
+          <input type="password" id="frPin" inputmode="numeric" placeholder="e.g. 4–6 digits" autocomplete="off">
+          <div style="height:16px"></div>
+          <button class="btn" id="frBtn">Create manager account</button>
+          <p class="hint">Keep this PIN safe — if it's lost the only reset is clearing the browser's site data, which also erases history.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div class="panel" id="panel-dashboard">
+    <div class="admin-top">
+      <div class="who">Signed in as <b id="waWho">Manager</b></div>
+      <button class="logout" onclick="adminLogout()">Log out</button>
+    </div>
+    <div class="chips" id="dashChips">
+      <button data-days="7">7 days</button>
+      <button data-days="30" class="on">30 days</button>
+      <button data-days="90">90 days</button>
+      <button data-days="0">All time</button>
+    </div>
+    <div id="dashBody"></div>
+  </div>
+
+  <!-- ============ REPORTS ============ -->
+  <div class="panel" id="panel-reports">
+    <div class="admin-top">
+      <div class="who">Reports &amp; exports</div>
+      <button class="logout" onclick="adminLogout()">Log out</button>
+    </div>
+    <div class="chips" id="repChips">
+      <button data-days="7">7 days</button>
+      <button data-days="30" class="on">30 days</button>
+      <button data-days="90">90 days</button>
+      <button data-days="0">All time</button>
+    </div>
+    <div class="card">
+      <label class="fld">Manager summary report</label>
+      <p class="hint" style="margin:0 0 12px">A one-tap PDF for the selected period: sales totals, procurement priorities, staff activity, and repeat alerts — ready to print or share.</p>
+      <button class="btn" id="periodPdfBtn">Download period summary (PDF)</button>
+    </div>
+    <div class="card">
+      <label class="fld">Raw data export</label>
+      <p class="hint" style="margin:0 0 12px">Every check as a spreadsheet (CSV) — open in Excel for your own analysis. This export covers the selected period.</p>
+      <button class="btn ghost" id="exportBtn">Download history (CSV)</button>
+    </div>
+    <div class="card">
+      <label class="fld">Maintenance</label>
+      <button class="btn danger" id="clearHistBtn">Clear all history on this device</button>
+      <p class="hint">Email reports and PDFs already sent are your permanent record and are not affected.</p>
+    </div>
+  </div>
+
 </div>
 
-<nav class="tabs">
+<nav class="tabs" id="nav">
   <button class="active" data-tab="check">Stock check</button>
-  <button data-tab="history">History</button>
-  <button data-tab="settings">Settings</button>
+  <button data-tab="dashboard" class="admin-only" hidden>Dashboard</button>
+  <button data-tab="reports" class="admin-only" hidden>Reports</button>
+  <button data-tab="history" class="admin-only" hidden>History</button>
+  <button data-tab="settings" class="admin-only" hidden>Settings</button>
+  <button data-tab="__auth" id="authBtn">Manager</button>
 </nav>
 
 <script>
@@ -318,13 +501,87 @@ const DEFAULT_INGREDIENTS = {
 
 const store = {
   get(k, fallback){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } },
-  set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)); if(CLOUD && CONFIG_KEYS.includes(k)) schedulePushConfig(); }
 };
+
+/* ================= BACKEND MODE ================= */
+const CONFIG_KEYS = ['ssc_ingredients','ssc_notes','ssc_settings'];
+const CLOUD = !!(window.SB_URL && window.SB_ANON_KEY && window.supabase);
+let sb = null;
+if(CLOUD){
+  try{ sb = window.supabase.createClient(window.SB_URL, window.SB_ANON_KEY); }
+  catch(e){ console.error('Supabase init failed', e); }
+}
+
+// Map between a Supabase "checks" row and the app's in-memory record shape
+const rowToRecord = r => ({
+  id: r.id, ts: r.created_at, staff: r.staff,
+  cash: Number(r.cash)||0, card: Number(r.card)||0,
+  total: r.total_items||0, low: r.low_items||[], out: r.out_items||[], sent: !!r.sent
+});
+const recordToRow = rec => ({
+  staff: rec.staff, cash: rec.cash, card: rec.card,
+  total_items: rec.total, low_items: rec.low, out_items: rec.out, sent: rec.sent
+});
+
+// Push the whole config object to Supabase (debounced)
+let _pushTimer = null;
+function schedulePushConfig(){
+  if(!CLOUD || !sb || !session) return;   // only a signed-in manager can write config
+  clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(pushConfig, 600);
+}
+async function pushConfig(){
+  if(!CLOUD || !sb) return;
+  const payload = { ingredients, notes, settings };
+  try{
+    const { error } = await sb.from('config').upsert({ id:1, data: payload, updated_at: new Date().toISOString() });
+    if(error) console.error('Config sync failed:', error.message);
+  }catch(e){ console.error('Config sync error', e); }
+}
+async function pullConfig(){
+  if(!CLOUD || !sb) return;
+  try{
+    const { data, error } = await sb.from('config').select('data').eq('id',1).maybeSingle();
+    if(error){ console.error('Config load failed:', error.message); return; }
+    if(data && data.data){
+      const d = data.data;
+      if(d.ingredients) ingredients = d.ingredients;
+      if(d.notes) notes = d.notes;
+      if(d.settings){
+        settings = Object.assign({ biz:'', key:'', staff:[], admins:[] }, d.settings);
+        if(!Array.isArray(settings.staff)) settings.staff = [];
+        if(!Array.isArray(settings.admins)) settings.admins = [];
+      }
+      // cache locally so the staff screen still works if briefly offline
+      localStorage.setItem('ssc_ingredients', JSON.stringify(ingredients));
+      localStorage.setItem('ssc_notes', JSON.stringify(notes));
+      localStorage.setItem('ssc_settings', JSON.stringify(settings));
+    }
+  }catch(e){ console.error('Config load error', e); }
+}
+async function pullHistory(){
+  if(!CLOUD || !sb) return;
+  try{
+    const { data, error } = await sb.from('checks').select('*').order('created_at',{ascending:false}).limit(1000);
+    if(error){ console.error('History load failed:', error.message); return; }
+    history = (data||[]).map(rowToRecord);
+    localStorage.setItem('ssc_history', JSON.stringify(history));
+  }catch(e){ console.error('History load error', e); }
+}
 
 let ingredients = store.get('ssc_ingredients', null) || JSON.parse(JSON.stringify(DEFAULT_INGREDIENTS));
 let notes       = store.get('ssc_notes', {});   // "Category||Item" -> guidance text
-let settings    = store.get('ssc_settings', { biz:'', key:'', staff:[] });
+let settings    = store.get('ssc_settings', { biz:'', key:'', staff:[], admins:[] });
 if(!Array.isArray(settings.staff)) settings.staff = [];
+if(!Array.isArray(settings.admins)) settings.admins = [];
+// Migrate an old single Manager PIN into a proper manager account
+if(settings.pin && !settings.admins.length){
+  settings.admins.push({ name:'Manager', pin: settings.pin });
+  delete settings.pin;
+  store.set('ssc_settings', settings);
+}
+let session = null;   // {name} when a manager is signed in
 let history     = store.get('ssc_history', []);
 let statusMap   = {};   // "Category||Item" -> ok|low|out
 
@@ -333,27 +590,138 @@ const $ = id => document.getElementById(id);
 const allItems = () => Object.entries(ingredients).flatMap(([c, arr]) => arr.map(i => c + '||' + i));
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-/* ================= TABS (with manager PIN lock) ================= */
-let unlocked = false;
+/* ================= TABS + ADMIN SESSION ================= */
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+  $('panel-' + id).classList.add('show');
+  window.scrollTo(0,0);
+}
+function setActiveTab(tab){
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+  const b = document.querySelector('nav.tabs button[data-tab="' + tab + '"]');
+  if(b) b.classList.add('active');
+}
+
 document.querySelectorAll('nav.tabs button').forEach(b=>{
   b.onclick = ()=>{
     const t = b.dataset.tab;
-    if((t==='history' || t==='settings') && settings.pin && !unlocked){
-      const p = prompt('Manager PIN:');
-      if(p === null) return;
-      if(p !== settings.pin){ alert('Incorrect PIN.'); return; }
-      unlocked = true;
+    if(t === '__auth'){
+      if(session){ adminLogout(); }
+      else { openLogin(); }
+      return;
     }
-    if(t==='check') unlocked = false;   // re-lock when returning to the staff screen
-    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
-    $('panel-' + t).classList.add('show');
-    if(t==='history') renderHistory();
-    if(t==='settings') renderSettings();
-    window.scrollTo(0,0);
+    // Admin-only tabs require a session
+    if(['dashboard','reports','history','settings'].includes(t) && !session){
+      openLogin(); return;
+    }
+    setActiveTab(t);
+    showPanel(t);
+    if(t==='dashboard') renderDashboard();
+    if(t==='reports')   syncReportChips();
+    if(t==='history')   renderHistory();
+    if(t==='settings')  renderSettings();
   };
 });
+
+function openLogin(){
+  $('loginErr').classList.remove('show');
+  if(CLOUD){
+    // Cloud mode: email + password via Supabase Auth
+    $('loginForm').style.display = 'none';
+    $('firstRunForm').style.display = 'none';
+    $('cloudLoginForm').style.display = 'block';
+    $('loginTitle').textContent = 'Manager sign in';
+    $('loginSub').textContent = 'Sign in to view analytics and reports on any device.';
+    $('cloudPass').value = '';
+  }else{
+    // Local mode: PIN-based managers
+    $('cloudLoginForm').style.display = 'none';
+    const firstRun = settings.admins.length === 0;
+    $('firstRunForm').style.display = firstRun ? 'block' : 'none';
+    $('loginForm').style.display    = firstRun ? 'none'  : 'block';
+    $('loginTitle').textContent = firstRun ? 'Set up manager access' : 'Manager sign in';
+    $('loginSub').textContent   = firstRun ? 'Create the first manager account to unlock reports.' : 'Enter your manager credentials to view reports.';
+    $('loginPin').value = '';
+    if(!firstRun){
+      const sel = $('loginUser'); sel.innerHTML = '';
+      settings.admins.forEach(a=>{
+        const o = document.createElement('option'); o.value = a.name; o.textContent = a.name; sel.appendChild(o);
+      });
+    }
+  }
+  setActiveTab('__auth');
+  showPanel('login');
+}
+
+async function enterAdmin(){
+  // Called after a successful sign-in (either mode). Pull fresh cloud data.
+  applySessionUI();
+  if(CLOUD){
+    await pullConfig();
+    await pullHistory();
+    renderStaffSel();
+    renderCheckList();
+  }
+  setActiveTab('dashboard'); showPanel('dashboard'); renderDashboard();
+}
+
+function applySessionUI(){
+  document.querySelectorAll('.admin-only').forEach(el=>{ el.hidden = !session; });
+  const authBtn = $('authBtn');
+  authBtn.textContent = session ? 'Log out' : 'Manager';
+}
+
+// --- Local (PIN) sign-in ---
+$('loginBtn').onclick = ()=>{
+  const name = $('loginUser').value;
+  const pin  = $('loginPin').value.trim();
+  const acct = settings.admins.find(a=>a.name === name);
+  if(acct && acct.pin === pin){
+    session = { name: acct.name };
+    enterAdmin();
+  }else{
+    const e = $('loginErr'); e.textContent = 'Incorrect PIN. Please try again.'; e.classList.add('show');
+  }
+};
+$('loginPin').addEventListener('keydown', e=>{ if(e.key==='Enter') $('loginBtn').click(); });
+
+$('frBtn').onclick = ()=>{
+  const name = $('frName').value.trim();
+  const pin  = $('frPin').value.trim();
+  if(!name || !pin){ const e=$('loginErr'); e.textContent='Enter both a name and a PIN.'; e.classList.add('show'); return; }
+  settings.admins.push({ name, pin });
+  store.set('ssc_settings', settings);
+  session = { name };
+  enterAdmin();
+};
+
+// --- Cloud (Supabase Auth) sign-in ---
+$('cloudLoginBtn').onclick = async ()=>{
+  const email = $('cloudEmail').value.trim();
+  const pass  = $('cloudPass').value;
+  const errEl = $('loginErr');
+  if(!email || !pass){ errEl.textContent = 'Enter your email and password.'; errEl.classList.add('show'); return; }
+  const btn = $('cloudLoginBtn'); btn.disabled = true; btn.textContent = 'Signing in…';
+  try{
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(error) throw error;
+    session = { name: data.user.email };
+    await enterAdmin();
+  }catch(e){
+    errEl.textContent = (e && e.message) ? e.message : 'Sign-in failed. Check your email and password.';
+    errEl.classList.add('show');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+};
+$('cloudPass').addEventListener('keydown', e=>{ if(e.key==='Enter') $('cloudLoginBtn').click(); });
+
+async function adminLogout(){
+  session = null;
+  if(CLOUD && sb){ try{ await sb.auth.signOut(); }catch(e){} }
+  applySessionUI();
+  setActiveTab('check'); showPanel('check');
+}
 
 /* ================= STAFF DROPDOWN ================= */
 function renderStaffSel(){
@@ -516,8 +884,19 @@ $('submitBtn').onclick = async ()=>{
   }
 
   record.sent = sent;
+  if(CLOUD && sb){
+    try{
+      const { data, error } = await sb.from('checks').insert(recordToRow(record)).select().maybeSingle();
+      if(error) throw error;
+      if(data) record.id = data.id;
+    }catch(e){
+      console.error('Cloud save failed', e);
+      // Fall back to local so the check is never lost
+      $('successMsg').dataset.cloudfail = '1';
+    }
+  }
   history.unshift(record);
-  if(history.length > 200) history.length = 200;
+  if(history.length > 1000) history.length = 1000;
   store.set('ssc_history', history);
   lastRecord = record;
   lastRepeats = repeats;
@@ -549,7 +928,257 @@ function startNewCheck(){
   window.scrollTo(0,0);
 }
 
-/* ================= PDF REPORT ================= */
+/* ================= ANALYTICS ================= */
+let dashDays = 30, repDays = 30;
+const money = n => 'GH\u20B5' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const shortMoney = n => {
+  if(n >= 1000000) return 'GH\u20B5' + (n/1000000).toFixed(1) + 'M';
+  if(n >= 1000)    return 'GH\u20B5' + (n/1000).toFixed(1) + 'k';
+  return 'GH\u20B5' + Math.round(n||0);
+};
+const dayKey = ts => new Date(ts).toISOString().slice(0,10);
+
+function periodRecords(days){
+  if(!days) return history.slice();
+  const cut = Date.now() - days*86400000;
+  return history.filter(r => new Date(r.ts).getTime() >= cut);
+}
+
+function analyse(days){
+  const recs = periodRecords(days);
+  let cash = 0, card = 0;
+  const dayMap = {};                 // date -> total sales
+  const staffMap = {};               // staff -> checks
+  const itemMap = {};                // item -> {low, out, dates:[{d,type}]}
+  recs.forEach(r=>{
+    if(typeof r.cash === 'number'){ cash += r.cash; card += r.card; }
+    const dk = dayKey(r.ts);
+    dayMap[dk] = (dayMap[dk]||0) + ((r.cash||0)+(r.card||0));
+    staffMap[r.staff] = (staffMap[r.staff]||0) + 1;
+    (r.out||[]).forEach(it=>{ (itemMap[it]=itemMap[it]||{low:0,out:0,dates:[]}); itemMap[it].out++; itemMap[it].dates.push({d:dk,type:'out'}); });
+    (r.low||[]).forEach(it=>{ (itemMap[it]=itemMap[it]||{low:0,out:0,dates:[]}); itemMap[it].low++; itemMap[it].dates.push({d:dk,type:'low'}); });
+  });
+  const items = Object.entries(itemMap).map(([name,v])=>({name, ...v, score:v.out*2+v.low}))
+                      .sort((a,b)=> b.out-a.out || b.low-a.low || a.name.localeCompare(b.name));
+  const days_covered = Object.keys(dayMap).length;
+  return {
+    recs, cash, card, total:cash+card,
+    checks:recs.length, days_covered,
+    avgDay: days_covered ? (cash+card)/days_covered : 0,
+    dayMap, staffMap, items,
+    outOccurrences: items.reduce((s,i)=>s+i.out,0),
+    lowOccurrences: items.reduce((s,i)=>s+i.low,0),
+    distinctOut: items.filter(i=>i.out>0).length
+  };
+}
+
+// Current consecutive low/out streaks across full history (newest-first)
+function currentStreaks(minLen){
+  const seen = {}; const streaks = {};
+  for(const r of history){
+    const flagged = new Set([...(r.out||[]), ...(r.low||[])]);
+    flagged.forEach(it=>{ if(!seen[it+'__broken']){ streaks[it]=(streaks[it]||0)+1; } });
+    // mark items NOT flagged in this record as broken going further back
+    Object.keys(streaks).forEach(it=>{ if(!flagged.has(it)) seen[it+'__broken']=true; });
+  }
+  return Object.entries(streaks).filter(([,n])=>n>=minLen).map(([name,n])=>({name,n})).sort((a,b)=>b.n-a.n);
+}
+
+function svgBarChart(dayMap){
+  const keys = Object.keys(dayMap).sort();
+  if(!keys.length) return '<p class="empty-note">No sales recorded in this period.</p>';
+  const vals = keys.map(k=>dayMap[k]);
+  const max = Math.max(...vals, 1);
+  const W = 340, H = 150, pad = 22, bw = Math.max(4, (W - pad) / keys.length - 3);
+  let bars = '', labels = '';
+  keys.forEach((k,i)=>{
+    const x = pad + i * ((W - pad) / keys.length);
+    const h = (dayMap[k]/max) * (H - 30);
+    bars += '<rect x="'+x.toFixed(1)+'" y="'+(H-20-h).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="var(--green)"><title>'+k+': '+money(dayMap[k])+'</title></rect>';
+    if(i===0 || i===keys.length-1 || i===Math.floor(keys.length/2)){
+      const d = new Date(k);
+      labels += '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" font-size="9" fill="#8a938a" text-anchor="middle">'+d.getDate()+'/'+(d.getMonth()+1)+'</text>';
+    }
+  });
+  const gl = '<line x1="'+pad+'" y1="'+(H-20)+'" x2="'+W+'" y2="'+(H-20)+'" stroke="var(--line)"/>' +
+             '<text x="0" y="14" font-size="9" fill="#8a938a">'+shortMoney(max)+'</text>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">'+gl+bars+labels+'</svg>';
+}
+
+function renderDashboard(){
+  $('waWho').textContent = session ? session.name : 'Manager';
+  const a = analyse(dashDays);
+  const host = $('dashBody');
+
+  if(!history.length){
+    host.innerHTML = '<div class="card"><p class="empty-note">No checks have been recorded on this device yet.<br>Once staff complete shift-end checks, your overview appears here.</p></div>';
+    return;
+  }
+
+  const cashPct = a.total ? Math.round(a.cash/a.total*100) : 0;
+  const cardPct = 100 - cashPct;
+
+  let html = '';
+
+  // KPI grid
+  html += '<div class="kpi-grid">' +
+    '<div class="kpi accent wide"><div class="k-label">Total sales</div><div class="k-val">'+money(a.total)+'</div><div class="k-sub">'+a.checks+' checks · '+a.days_covered+' day(s) with sales</div></div>' +
+    '<div class="kpi"><div class="k-label">Cash</div><div class="k-val">'+shortMoney(a.cash)+'</div><div class="k-sub">'+cashPct+'% of takings</div></div>' +
+    '<div class="kpi"><div class="k-label">Card</div><div class="k-val">'+shortMoney(a.card)+'</div><div class="k-sub">'+cardPct+'% of takings</div></div>' +
+    '<div class="kpi"><div class="k-label">Avg / day</div><div class="k-val">'+shortMoney(a.avgDay)+'</div><div class="k-sub">across days with checks</div></div>' +
+    '<div class="kpi"><div class="k-label">Out-of-stock hits</div><div class="k-val">'+a.outOccurrences+'</div><div class="k-sub">'+a.distinctOut+' different item(s)</div></div>' +
+    '</div>';
+
+  // Sales trend
+  html += '<div class="chartcard"><h3>Daily sales</h3>'+svgBarChart(a.dayMap)+'</div>';
+
+  // Cash vs card split
+  if(a.total){
+    html += '<div class="chartcard"><h3>Cash vs card</h3><div class="splitbar">' +
+      (cashPct>0?'<span style="width:'+cashPct+'%;background:var(--green)">'+(cashPct>=12?cashPct+'%':'')+'</span>':'') +
+      (cardPct>0?'<span style="width:'+cardPct+'%;background:var(--ink)">'+(cardPct>=12?cardPct+'%':'')+'</span>':'') +
+      '</div><div class="legend"><span><i style="background:var(--green)"></i>Cash '+money(a.cash)+'</span><span><i style="background:var(--ink)"></i>Card '+money(a.card)+'</span></div></div>';
+  }
+
+  // Procurement priorities
+  html += '<div class="sect-h">Procurement priorities</div>';
+  if(!a.items.length){
+    html += '<div class="card"><p class="empty-note">Nothing was reported low or out this period. 🎉</p></div>';
+  }else{
+    html += '<div class="card" style="padding:6px 10px"><table class="dt"><thead><tr><th>Item</th><th class="num">Out</th><th class="num">Low</th></tr></thead><tbody id="procBody"></tbody></table></div>';
+  }
+
+  // Staff activity
+  const staffRows = Object.entries(a.staffMap).sort((x,y)=>y[1]-x[1]);
+  if(staffRows.length){
+    html += '<div class="sect-h">Checks by staff</div><div class="card" style="padding:6px 10px"><table class="dt"><tbody>';
+    staffRows.forEach(([n,c])=>{ html += '<tr><td class="item-nm">'+esc(n)+'</td><td class="num">'+c+' check'+(c>1?'s':'')+'</td></tr>'; });
+    html += '</tbody></table></div>';
+  }
+
+  // Repeat alerts
+  const streaks = currentStreaks(3);
+  if(streaks.length){
+    html += '<div class="sect-h">Active repeat alerts</div><div class="card"><p class="hint" style="margin:0 0 8px">Low or out in 3+ checks in a row — order these urgently:</p>';
+    streaks.forEach(s=>{ html += '<span class="pill out">'+esc(s.name)+' · '+s.n+'×</span> '; });
+    html += '</div>';
+  }
+
+  host.innerHTML = html;
+
+  // Fill procurement table with drill-down
+  const pb = $('procBody');
+  if(pb){
+    a.items.forEach((it, idx)=>{
+      const main = document.createElement('tr');
+      main.className = 'rowmain';
+      main.innerHTML = '<td class="item-nm">'+esc(it.name)+'</td>' +
+        '<td class="num"><span class="badge-n '+(it.out?'out':'zero')+'">'+it.out+'</span></td>' +
+        '<td class="num"><span class="badge-n '+(it.low?'low':'zero')+'">'+it.low+'</span></td>';
+      const drill = document.createElement('tr');
+      drill.className = 'drill'; drill.style.display = 'none';
+      const dates = it.dates.slice().sort((x,y)=>y.d.localeCompare(x.d))
+        .map(x=>{ const d=new Date(x.d); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' ('+x.type+')'; }).join(' · ');
+      drill.innerHTML = '<td colspan="3"><b>When:</b> '+esc(dates)+'</td>';
+      main.onclick = ()=>{ drill.style.display = drill.style.display==='none' ? 'table-row' : 'none'; };
+      pb.appendChild(main); pb.appendChild(drill);
+    });
+  }
+}
+
+$('dashChips').querySelectorAll('button').forEach(b=>{
+  b.onclick = ()=>{
+    $('dashChips').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); dashDays = parseInt(b.dataset.days,10); renderDashboard();
+  };
+});
+
+/* ================= PERIOD SUMMARY PDF ================= */
+function syncReportChips(){
+  $('repChips').querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', parseInt(b.dataset.days,10)===repDays);
+  });
+}
+$('repChips').querySelectorAll('button').forEach(b=>{
+  b.onclick = ()=>{ repDays = parseInt(b.dataset.days,10); syncReportChips(); };
+});
+
+function buildPeriodPdf(days){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const a = analyse(days);
+  const biz = settings.biz || 'Restaurant';
+  const now = new Date();
+  const label = days ? ('Last ' + days + ' days') : 'All time';
+  let y = 20;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(23,33,27);
+  doc.text(biz, 14, y); y += 8;
+  doc.setFontSize(12); doc.setFont('helvetica','normal'); doc.setTextColor(92,104,94);
+  doc.text('Manager summary — ' + label, 14, y); y += 6;
+  doc.setFontSize(10);
+  doc.text('Generated ' + now.toLocaleString('en-GB') + '  ·  by ' + (session?session.name:'Manager'), 14, y); y += 8;
+  doc.setDrawColor(216,223,215); doc.line(14, y, 196, y); y += 10;
+
+  // Sales block
+  doc.setFillColor(227,239,231); doc.rect(14, y-5, 182, 26, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(46,107,70);
+  doc.text('SALES', 16, y+1); y += 7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(23,33,27);
+  doc.text('Total: GHS ' + a.total.toFixed(2) + '     Cash: GHS ' + a.cash.toFixed(2) + '     Card: GHS ' + a.card.toFixed(2), 16, y+1); y += 6;
+  doc.text('Checks: ' + a.checks + '     Days with sales: ' + a.days_covered + '     Avg/day: GHS ' + a.avgDay.toFixed(2), 16, y+1); y += 16;
+
+  const heading = (txt)=>{ if(y>270){doc.addPage();y=20;} doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(23,33,27);doc.text(txt,14,y);y+=7; };
+
+  // Procurement priorities
+  heading('Procurement priorities');
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  if(!a.items.length){ doc.setTextColor(92,104,94); doc.text('Nothing reported low or out this period.', 16, y); y+=8; }
+  else{
+    doc.setTextColor(92,104,94); doc.setFontSize(9);
+    doc.text('ITEM', 16, y); doc.text('OUT', 150, y); doc.text('LOW', 172, y); y+=2;
+    doc.setDrawColor(216,223,215); doc.line(14,y,196,y); y+=6;
+    doc.setTextColor(23,33,27); doc.setFontSize(11);
+    a.items.slice(0,25).forEach(it=>{
+      if(y>282){doc.addPage();y=20;}
+      doc.text(String(it.name).slice(0,60), 16, y);
+      doc.text(String(it.out), 152, y, {align:'left'});
+      doc.text(String(it.low), 174, y, {align:'left'});
+      y+=6.4;
+    });
+    y+=6;
+  }
+
+  // Repeat alerts
+  const streaks = currentStreaks(3);
+  if(streaks.length){
+    heading('Active repeat alerts (order urgently)');
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(179,39,30);
+    streaks.forEach(s=>{ if(y>282){doc.addPage();y=20;} doc.text('•  '+s.name+'  ('+s.n+' checks in a row)', 16, y); y+=6.4; });
+    y+=6; doc.setTextColor(23,33,27);
+  }
+
+  // Staff activity
+  const staffRows = Object.entries(a.staffMap).sort((x,y2)=>y2[1]-x[1]);
+  if(staffRows.length){
+    heading('Checks by staff');
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    staffRows.forEach(([n,c])=>{ if(y>282){doc.addPage();y=20;} doc.text('•  '+n+' — '+c+' check'+(c>1?'s':''), 16, y); y+=6.4; });
+  }
+
+  doc.setFontSize(9); doc.setTextColor(150,155,150);
+  doc.text('Generated by ' + biz + ' stock check system', 14, 290);
+  return doc;
+}
+
+$('periodPdfBtn').onclick = ()=>{
+  try{
+    const label = repDays ? ('last-' + repDays + '-days') : 'all-time';
+    buildPeriodPdf(repDays).save('summary-' + label + '-' + new Date().toISOString().slice(0,10) + '.pdf');
+  }catch(e){ alert('Could not create the PDF — check the internet connection and try again.'); }
+};
+
+/* ================= PDF REPORT (single check) ================= */
 let lastRecord = null, lastRepeats = [];
 
 function repeatsForIndex(i){
@@ -699,7 +1328,7 @@ function renderHistory(){
 
 $('exportBtn').onclick = ()=>{
   let csv = 'Date,Time,Staff,Cash sales (GHS),Card sales (GHS),Total sales (GHS),Items checked,Out of stock,Running low,Email sent\n';
-  history.slice().reverse().forEach(r=>{
+  periodRecords(repDays).slice().reverse().forEach(r=>{
     const d = new Date(r.ts);
     const q = s => '"' + String(s).replace(/"/g,'""') + '"';
     const cash = typeof r.cash === 'number' ? r.cash.toFixed(2) : '';
@@ -713,20 +1342,65 @@ $('exportBtn').onclick = ()=>{
   a.click();
 };
 
-$('clearHistBtn').onclick = ()=>{
-  if(confirm('Delete all saved history on this device? Email reports already sent are not affected.')){
-    history = []; store.set('ssc_history', history); renderHistory();
+$('clearHistBtn').onclick = async ()=>{
+  const msg = CLOUD
+    ? 'Delete ALL checks from the shared database? This affects every device and cannot be undone.'
+    : 'Delete all saved history on this device? Email reports already sent are not affected.';
+  if(!confirm(msg)) return;
+  if(CLOUD && sb){
+    try{
+      const { error } = await sb.from('checks').delete().neq('id', -1);
+      if(error) throw error;
+    }catch(e){ alert('Could not clear the database: ' + (e.message||e)); return; }
   }
+  history = []; localStorage.setItem('ssc_history', JSON.stringify(history)); renderHistory();
 };
 
 /* ================= SETTINGS ================= */
 function renderSettings(){
   $('setBiz').value = settings.biz || '';
   $('setKey').value = settings.key || '';
-  $('setPin').value = settings.pin || '';
+  if(CLOUD){
+    // Managers are Supabase Auth users; hide the local PIN manager UI
+    $('adminTags').style.display = 'none';
+    $('newAdminName').parentElement.style.display = 'none';
+    $('cloudAdminNote').style.display = 'block';
+  }else{
+    renderAdminTags();
+  }
   renderStaffTags();
   renderIngManager();
 }
+
+function renderAdminTags(){
+  const host = $('adminTags');
+  host.innerHTML = '';
+  settings.admins.forEach(a=>{
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.innerHTML = '<span class="tagname">' + esc(a.name) + '</span> <button title="Remove">✕</button>';
+    t.querySelector('button').onclick = ()=>{
+      if(settings.admins.length <= 1){ alert('You must keep at least one manager account.'); return; }
+      if(confirm('Remove manager "' + a.name + '"?')){
+        settings.admins = settings.admins.filter(x=>x!==a);
+        store.set('ssc_settings', settings);
+        renderAdminTags();
+      }
+    };
+    host.appendChild(t);
+  });
+}
+
+$('addAdminBtn').onclick = ()=>{
+  const name = $('newAdminName').value.trim();
+  const pin  = $('newAdminPin').value.trim();
+  if(!name || !pin){ alert('Enter both a name and a PIN for the new manager.'); return; }
+  if(settings.admins.some(a=>a.name===name)){ alert('A manager with that name already exists.'); return; }
+  settings.admins.push({ name, pin });
+  store.set('ssc_settings', settings);
+  $('newAdminName').value = ''; $('newAdminPin').value = '';
+  renderAdminTags();
+};
 
 function renderStaffTags(){
   const host = $('staffTags');
@@ -758,12 +1432,10 @@ $('newStaffName').addEventListener('keydown', e=>{ if(e.key==='Enter') $('addSta
 $('saveSettingsBtn').onclick = ()=>{
   settings.biz = $('setBiz').value.trim();
   settings.key = $('setKey').value.trim();
-  settings.pin = $('setPin').value.trim();
   store.set('ssc_settings', settings);
   $('bizName').textContent = settings.biz || 'Restaurant Stock';
   $('settingsStatus').textContent = 'Saved ✓'
-    + (settings.key ? '' : ' — note: no access key entered, so email reports are OFF.')
-    + (settings.pin ? ' History & Settings are now PIN-locked.' : ' No PIN set — History & Settings are open to everyone.');
+    + (settings.key ? '' : ' — note: no access key entered, so email reports are OFF.');
 };
 
 function renderIngManager(){
@@ -844,9 +1516,56 @@ $('resetIngBtn').onclick = ()=>{
 };
 
 /* ================= INIT ================= */
-$('bizName').textContent = settings.biz || 'Restaurant Stock';
-renderCheckList();
-renderStaffSel();
+function setModeBadge(){
+  const el = $('modeBadge');
+  if(CLOUD){
+    el.style.display = 'block';
+    el.style.background = 'var(--green-soft)'; el.style.color = 'var(--green)';
+    el.textContent = '☁ Cloud mode — synced across devices';
+  }else if(window.SB_URL || window.SB_ANON_KEY){
+    // Partly filled or library missing
+    el.style.display = 'block';
+    el.style.background = 'var(--amber-soft)'; el.style.color = 'var(--amber)';
+    el.textContent = '⚠ Cloud not ready — check Supabase keys';
+  }else{
+    el.style.display = 'block';
+    el.style.background = '#EDEFEC'; el.style.color = 'var(--muted)';
+    el.textContent = '📴 Local mode — this device only';
+  }
+}
+
+async function boot(){
+  setModeBadge();
+  $('bizName').textContent = settings.biz || 'Restaurant Stock';
+  // First paint from whatever is cached locally so the screen is instant
+  renderCheckList();
+  renderStaffSel();
+  applySessionUI();
+
+  if(CLOUD && sb){
+    // Pull the shared ingredient/staff list so the staff screen matches every device
+    await pullConfig();
+    $('bizName').textContent = settings.biz || 'Restaurant Stock';
+    renderCheckList();
+    renderStaffSel();
+
+    // Restore a signed-in manager session if one exists on this device
+    try{
+      const { data } = await sb.auth.getSession();
+      if(data && data.session){
+        session = { name: data.session.user.email };
+        applySessionUI();
+        await pullHistory();
+      }
+    }catch(e){ console.error('Session restore failed', e); }
+
+    // React to sign-out from another tab
+    sb.auth.onAuthStateChange((event)=>{
+      if(event === 'SIGNED_OUT' && session){ session = null; applySessionUI(); setActiveTab('check'); showPanel('check'); }
+    });
+  }
+}
+boot();
 </script>
 </body>
 </html>
