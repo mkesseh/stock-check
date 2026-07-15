@@ -472,6 +472,11 @@ Onions</div>
       <div class="who">Reports &amp; exports</div>
       <button class="logout" onclick="adminLogout()">Log out</button>
     </div>
+    <div class="card" id="dbStatusCard" style="display:none">
+      <label class="fld">Database connection</label>
+      <div id="dbStatusLine" style="font-size:14px;font-weight:600;margin:2px 0 10px"></div>
+      <button class="btn ghost" id="dbRefreshBtn">Refresh from database now</button>
+    </div>
     <div class="chips" id="repChips">
       <button data-days="7">7 days</button>
       <button data-days="30" class="on">30 days</button>
@@ -597,14 +602,30 @@ async function pullConfig(){
     }
   }catch(e){ console.error('Config load error', e); }
 }
+let DB_STATUS = { ok:null, count:0, error:'', checkedAt:null };
 async function pullHistory(){
   if(!CLOUD || !sb) return;
   try{
     const { data, error } = await sb.from('checks').select('*').order('created_at',{ascending:false}).limit(1000);
-    if(error){ console.error('History load failed:', error.message); return; }
-    history = (data||[]).map(rowToRecord);
+    if(error){
+      DB_STATUS = { ok:false, count:0, error:error.message, checkedAt:new Date() };
+      console.error('History load failed:', error.message);
+      return;   // keep whatever we already have; don't wipe local view
+    }
+    const remote = (data||[]).map(rowToRecord);
+    // Keep any local checks that never made it to the database (synced === false),
+    // so a failed submission is still visible to the manager instead of vanishing.
+    const localOnly = (history||[]).filter(r => r.synced === false);
+    const seen = new Set(remote.map(r => r.ts + '|' + r.staff));
+    const merged = remote.concat(localOnly.filter(r => !seen.has(r.ts + '|' + r.staff)));
+    merged.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
+    history = merged;
     localStorage.setItem('ssc_history', JSON.stringify(history));
-  }catch(e){ console.error('History load error', e); }
+    DB_STATUS = { ok:true, count:remote.length, error:'', checkedAt:new Date() };
+  }catch(e){
+    DB_STATUS = { ok:false, count:0, error:(e&&e.message)||String(e), checkedAt:new Date() };
+    console.error('History load error', e);
+  }
 }
 
 let ingredients = store.get('ssc_ingredients', null) || JSON.parse(JSON.stringify(DEFAULT_INGREDIENTS));
@@ -654,7 +675,7 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
     setActiveTab(t);
     showPanel(t);
     if(t==='dashboard') renderDashboard();
-    if(t==='reports')   syncReportChips();
+    if(t==='reports'){ syncReportChips(); if(CLOUD){ renderDbStatus(); pullHistory().then(renderDbStatus); } }
     if(t==='history')   renderHistory();
     if(t==='settings')  renderSettings();
   };
@@ -945,15 +966,17 @@ $('submitBtn').onclick = async ()=>{
   }
 
   record.sent = sent;
+  let cloudErr = '';
   if(CLOUD && sb){
     try{
       const { data, error } = await sb.from('checks').insert(recordToRow(record)).select().maybeSingle();
       if(error) throw error;
       if(data) record.id = data.id;
+      record.synced = true;
     }catch(e){
       console.error('Cloud save failed', e);
-      // Fall back to local so the check is never lost
-      $('successMsg').dataset.cloudfail = '1';
+      cloudErr = (e && e.message) ? e.message : 'could not reach the database';
+      record.synced = false;
     }
   }
   history.unshift(record);
@@ -962,11 +985,18 @@ $('submitBtn').onclick = async ()=>{
   lastRecord = record;
   lastRepeats = repeats;
 
+  const cloudLine = CLOUD
+    ? (cloudErr
+        ? '<br><b style="color:var(--red)">⚠ This check did NOT reach the database, so the manager will not see it.</b><br><span style="color:var(--muted);font-size:13px">Reason: ' + esc(cloudErr) + '</span>'
+        : '<br><span style="color:var(--green);font-weight:600">☁ Saved to the shared database ✓</span>')
+    : '';
+
   $('successMsg').innerHTML = (sent
     ? 'The report was emailed to ' + okCount + ' of ' + keyCount + ' recipient(s).'
       + (okCount < keyCount ? ' <b>One or more emails failed — please also tell the manager directly.</b>' : '')
       + '<br>' + out.length + ' item(s) out of stock, ' + low.length + ' running low.'
-    : '<b>Saved on this device, but the email was not sent.</b><br>' + esc(errMsg) + '<br>Please tell the manager directly about: ' + esc((out.concat(low)).join(', ') || 'nothing — all stock OK'))
+    : '<b>' + (CLOUD ? 'Email not sent' : 'Saved on this device, but the email was not sent') + '.</b><br>' + esc(errMsg))
+    + cloudLine
     + (repeats.length ? '<br><b style="color:var(--red)">⚠ ' + repeats.length + ' item(s) have been low/out for 3+ checks in a row.</b>' : '');
   $('sharePdfBtn').style.display = (navigator.share && navigator.canShare) ? 'block' : 'none';
 
@@ -1163,6 +1193,33 @@ function syncReportChips(){
 $('repChips').querySelectorAll('button').forEach(b=>{
   b.onclick = ()=>{ repDays = parseInt(b.dataset.days,10); syncReportChips(); };
 });
+
+function renderDbStatus(){
+  const card = document.getElementById('dbStatusCard');
+  if(!CLOUD){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const line = document.getElementById('dbStatusLine');
+  const unsynced = (history||[]).filter(r=>r.synced===false).length;
+  if(DB_STATUS.ok === true){
+    line.innerHTML = '<span style="color:var(--green)">☁ Connected ✓</span> — ' + DB_STATUS.count + ' check(s) stored in the database.'
+      + (unsynced ? ' <span style="color:var(--red)">' + unsynced + ' check(s) on this device never reached the database.</span>' : '');
+  }else if(DB_STATUS.ok === false){
+    line.innerHTML = '<span style="color:var(--red)">⚠ Not connected.</span> ' + esc(DB_STATUS.error || '')
+      + '<br><span style="color:var(--muted);font-weight:400;font-size:13px">This usually means the database tables/rules were not created yet — run the setup SQL in Supabase.</span>';
+  }else{
+    line.innerHTML = '<span style="color:var(--muted)">Checking…</span>';
+  }
+}
+
+document.getElementById('dbRefreshBtn').onclick = async ()=>{
+  const btn = document.getElementById('dbRefreshBtn');
+  btn.disabled = true; btn.textContent = 'Refreshing…';
+  await pullConfig();
+  await pullHistory();
+  renderStaffSel();
+  renderDbStatus();
+  btn.disabled = false; btn.textContent = 'Refresh from database now';
+};
 
 /* ================= MODERN PDF TOOLKIT ================= */
 const PAL = {
