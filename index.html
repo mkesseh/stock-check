@@ -14,9 +14,8 @@
      Find them in Supabase: Project Settings → API.
      Leave both blank to keep running in LOCAL mode (this device only).
      ============================================================ */
-  window.SB_URL = "https://hylbyinveqhtckutstlc.supabase.co/rest/v1/";      // e.g. https://abcdefgh.supabase.co
-  window.SB_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bGJ5aW52ZXFodGNrdXRzdGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNjI5MjcsImV4cCI6MjA5OTYzODkyN30.F0zwp5T5LzFzHdv6gxmqLYXQAnvoEEtg7oVdbcS_dIQ
-"; // the long "anon public" key
+  window.SB_URL = "https://hylbyinveqhtckutstlc.supabase.co";      // e.g. https://abcdefgh.supabase.co
+  window.SB_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bGJ5aW52ZXFodGNrdXRzdGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNjI5MjcsImV4cCI6MjA5OTYzODkyN30.F0zwp5T5LzFzHdv6gxmqLYXQAnvoEEtg7oVdbcS_dIQ"; // the long "anon public" key
 </script>
 <style>
   :root{
@@ -373,6 +372,25 @@
         <input type="text" id="newStaffName" placeholder="Add a staff name">
         <button id="addStaffBtn">Add</button>
       </div>
+    </div>
+
+    <div class="card">
+      <label class="fld">Bulk import / export ingredients</label>
+      <p class="hint" style="margin:0 0 8px">Paste your whole list at once. Put a category on its own line starting with <b>#</b>, then one item per line. Add guidance after a <b>|</b> (pipe).</p>
+      <div style="background:#F3F6F2;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-family:monospace;font-size:12px;color:var(--muted);margin-bottom:10px;white-space:pre-wrap;line-height:1.5"># Proteins
+Chicken | OK = 3+ crates · Low = 1 crate
+Beef
+Eggs | OK = 2 crates
+
+# Vegetables
+Tomatoes | OK = 2 boxes · Low = half box
+Onions</div>
+      <textarea id="bulkText" placeholder="Paste your list here…" style="width:100%;min-height:150px;font-family:monospace;font-size:13px;resize:vertical"></textarea>
+      <div style="height:10px"></div>
+      <button class="btn" id="bulkMergeBtn">Add / merge into list</button>
+      <button class="btn ghost" id="bulkLoadBtn">Load current list into the box (to edit)</button>
+      <button class="btn danger" id="bulkReplaceBtn">Replace entire list with the box</button>
+      <p class="hint" id="bulkStatus"></p>
     </div>
 
     <div class="card">
@@ -842,21 +860,45 @@ $('submitBtn').onclick = async ()=>{
     total: allItems().length, low, out
   };
 
-  // Build email body
+  // Build email body — clean, structured text layout
   const biz = settings.biz || 'Restaurant';
-  const fmt = n => 'GH\u20B5' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  let body = 'STOCK CHECK — ' + biz + '\n';
-  body += 'Date: ' + now.toLocaleString('en-GB') + '\n';
-  body += 'Staff: ' + staff + '\n';
-  body += 'Items checked: ' + record.total + '\n\n';
-  body += '💰 SALES TODAY\n';
-  body += 'Cash: ' + fmt(cash) + '\nCard: ' + fmt(card) + '\nTOTAL: ' + fmt(cash + card) + '\n\n';
-  body += out.length ? ('🔴 OUT OF STOCK (' + out.length + '):\n- ' + out.join('\n- ') + '\n\n') : '🔴 Out of stock: none\n\n';
-  body += low.length ? ('🟡 RUNNING LOW (' + low.length + '):\n- ' + low.join('\n- ') + '\n') : '🟡 Running low: none\n';
-  if(repeats.length){
-    body += '\n⚠️ REPEAT ALERTS — low/out in 3 or more consecutive checks:\n';
-    repeats.forEach(r=>{ body += '- ' + r.item + ' (' + r.count + ' checks in a row)\n'; });
+  const fmt = n => 'GHS ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const RULE = '━━━━━━━━━━━━━━━━━━━━━━━━━━';
+  const pad = (s, n) => (s + '                    ').slice(0, n);
+  let body = '';
+  body += RULE + '\n';
+  body += '   ' + biz.toUpperCase() + '\n';
+  body += '   SHIFT-END STOCK CHECK\n';
+  body += RULE + '\n\n';
+  body += '🗓  ' + now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + '\n';
+  body += '🕒  ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) + '\n';
+  body += '👤  ' + staff + '\n';
+  body += '📋  ' + record.total + ' items checked\n\n';
+  body += '💰  SALES TODAY\n';
+  body += '    ' + pad('Cash', 8) + fmt(cash) + '\n';
+  body += '    ' + pad('Card', 8) + fmt(card) + '\n';
+  body += '    ----------------------\n';
+  body += '    ' + pad('Total', 8) + fmt(cash + card) + '\n\n';
+  if(out.length){
+    body += '🔴  OUT OF STOCK  (' + out.length + ')\n';
+    out.forEach(i=>{ body += '    •  ' + i + '\n'; });
+  }else{
+    body += '🔴  OUT OF STOCK\n    None — all good ✓\n';
   }
+  body += '\n';
+  if(low.length){
+    body += '🟡  RUNNING LOW  (' + low.length + ')\n';
+    low.forEach(i=>{ body += '    •  ' + i + '\n'; });
+  }else{
+    body += '🟡  RUNNING LOW\n    None ✓\n';
+  }
+  if(repeats.length){
+    body += '\n⚠️  REPEAT ALERTS — order urgently\n';
+    body += '    (low or out 3+ checks in a row)\n';
+    repeats.forEach(r=>{ body += '    •  ' + r.item + '  (' + r.count + '× in a row)\n'; });
+  }
+  body += '\n' + RULE + '\n';
+  body += 'Sent automatically from the ' + biz + ' stock check app.\n';
 
   let sent = false, errMsg = '', okCount = 0, keyCount = 0;
   const keys = (settings.key || '').split(',').map(k=>k.trim()).filter(Boolean);
@@ -1104,6 +1146,120 @@ $('repChips').querySelectorAll('button').forEach(b=>{
   b.onclick = ()=>{ repDays = parseInt(b.dataset.days,10); syncReportChips(); };
 });
 
+/* ================= MODERN PDF TOOLKIT ================= */
+const PAL = {
+  green:[46,107,70], greenSoft:[227,239,231], greenDark:[31,74,48],
+  ink:[23,33,27], muted:[110,122,112], line:[221,228,220],
+  amber:[176,116,10], amberSoft:[251,238,211],
+  red:[179,39,30], redSoft:[251,227,225],
+  grey:[150,158,150], greySoft:[238,241,237], white:[255,255,255]
+};
+const P_L = 14, P_R = 196, P_W = 182, P_BOT = 297;
+const fFill=(d,c)=>d.setFillColor(c[0],c[1],c[2]);
+const fStroke=(d,c)=>d.setDrawColor(c[0],c[1],c[2]);
+const fInk=(d,c)=>d.setTextColor(c[0],c[1],c[2]);
+
+function pHeader(doc, title, subtitle, rightText){
+  fFill(doc, PAL.green); doc.rect(0,0,210,34,'F');
+  fFill(doc, PAL.amber); doc.rect(0,34,210,1.6,'F');
+  fInk(doc, PAL.white); doc.setFont('helvetica','bold'); doc.setFontSize(19);
+  doc.text(title, P_L, 16);
+  fInk(doc, [214,232,221]); doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  doc.text(subtitle, P_L, 25);
+  if(rightText){ doc.setFontSize(8.5); fInk(doc,[196,222,205]); doc.text(rightText, P_R, 16, {align:'right'}); }
+  return 46;
+}
+function pSection(doc, text, y){
+  if(y > 268){ doc.addPage(); y = 22; }
+  fFill(doc, PAL.green); doc.rect(P_L, y-4.2, 3, 6, 'F');
+  fInk(doc, PAL.ink); doc.setFont('helvetica','bold'); doc.setFontSize(12.5);
+  doc.text(text, P_L+6, y+1);
+  return y + 9;
+}
+function pSalesCard(doc, y, cash, card, total){
+  const h = 25;
+  fFill(doc, PAL.greenSoft); doc.roundedRect(P_L, y, P_W, h, 3, 3, 'F');
+  fInk(doc, PAL.green); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text('SALES TODAY', P_L+7, y+7.5);
+  const cols = [['CASH',cash,PAL.ink],['CARD',card,PAL.ink],['TOTAL',total,PAL.green]];
+  const cw = P_W/3;
+  cols.forEach((c,i)=>{
+    const cx = P_L + i*cw + 7;
+    fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text(c[0], cx, y+14);
+    fInk(doc, c[2]); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.text('GHS ' + Number(c[1]).toFixed(2), cx, y+21);
+  });
+  return y + h + 8;
+}
+function pStatChip(doc, x, y, w, num, label, main, soft){
+  const h = 20;
+  fFill(doc, soft); doc.roundedRect(x, y, w, h, 3, 3, 'F');
+  fFill(doc, main); doc.rect(x, y+2.5, 2.4, h-5, 'F');
+  fInk(doc, main); doc.setFont('helvetica','bold'); doc.setFontSize(22);
+  doc.text(String(num), x+9, y+14.2);
+  const nW = doc.getTextWidth(String(num));
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text(label, x+9+nW+4, y+13);
+  return h;
+}
+function pItemRow(doc, y, text, main, soft){
+  if(y > 284){ doc.addPage(); y = 22; }
+  fFill(doc, soft); doc.roundedRect(P_L, y, P_W, 8.6, 2, 2, 'F');
+  fFill(doc, main); doc.rect(P_L+0.5, y+1.6, 2, 5.4, 'F');
+  fInk(doc, PAL.ink); doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  doc.text(String(text), P_L+7, y+5.7, {maxWidth:P_W-14});
+  return y + 10.4;
+}
+function pBadge(doc, cx, cy, num, main, soft){
+  const w=12, h=6;
+  fFill(doc, num>0?soft:PAL.greySoft); doc.roundedRect(cx, cy-4.4, w, h, 1.5, 1.5, 'F');
+  fInk(doc, num>0?main:PAL.grey); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text(String(num), cx+w/2, cy, {align:'center'});
+}
+function pCallout(doc, y, lines, title){
+  const h = 9 + lines.length*6 + 3;
+  if(y + h > 288){ doc.addPage(); y = 22; }
+  fFill(doc, PAL.redSoft); doc.roundedRect(P_L, y, P_W, h, 3, 3, 'F');
+  fFill(doc, PAL.red); doc.rect(P_L+0.5, y+2, 2.4, h-4, 'F');
+  fInk(doc, PAL.red); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(title, P_L+8, y+7);
+  fInk(doc, [120,40,34]); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  let ly = y+13;
+  lines.forEach(t=>{ doc.text('•  '+t, P_L+8, ly); ly += 6; });
+  return y + h + 8;
+}
+function pFooterAll(doc, biz){
+  const n = doc.internal.getNumberOfPages();
+  for(let i=1;i<=n;i++){
+    doc.setPage(i);
+    fStroke(doc, PAL.line); doc.setLineWidth(0.3); doc.line(P_L, P_BOT-15, P_R, P_BOT-15);
+    fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.text(biz + '  ·  Stock check system', P_L, P_BOT-10);
+    doc.text('Page ' + i + ' of ' + n, P_R, P_BOT-10, {align:'right'});
+  }
+}
+function pBarChart(doc, x, y, w, h, dayMap){
+  const keys = Object.keys(dayMap).sort();
+  if(!keys.length) return y;
+  const max = Math.max(...keys.map(k=>dayMap[k]), 1);
+  const n = keys.length;
+  const gap = n > 30 ? 0.6 : 2;
+  const bw = Math.max(0.8, (w - (n-1)*gap) / n);
+  fStroke(doc, PAL.line); doc.setLineWidth(0.3); doc.line(x, y+h, x+w, y+h);
+  keys.forEach((k,i)=>{
+    const bx = x + i*(bw+gap);
+    const bh = (dayMap[k]/max) * (h-2);
+    fFill(doc, PAL.green); doc.rect(bx, y+h-bh, bw, bh, 'F');
+  });
+  fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  const f=new Date(keys[0]), l=new Date(keys[n-1]);
+  doc.text(f.getDate()+'/'+(f.getMonth()+1), x, y+h+4);
+  doc.text('peak ' + shortMoney(max), x+w, y+h+4, {align:'right'});
+  return y + h + 8;
+}
+
+/* ================= PERIOD SUMMARY PDF ================= */
 function buildPeriodPdf(days){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -1111,64 +1267,90 @@ function buildPeriodPdf(days){
   const biz = settings.biz || 'Restaurant';
   const now = new Date();
   const label = days ? ('Last ' + days + ' days') : 'All time';
-  let y = 20;
+  let y = pHeader(doc, biz, 'Manager summary  ·  ' + label, now.toLocaleDateString('en-GB'));
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(23,33,27);
-  doc.text(biz, 14, y); y += 8;
-  doc.setFontSize(12); doc.setFont('helvetica','normal'); doc.setTextColor(92,104,94);
-  doc.text('Manager summary — ' + label, 14, y); y += 6;
-  doc.setFontSize(10);
-  doc.text('Generated ' + now.toLocaleString('en-GB') + '  ·  by ' + (session?session.name:'Manager'), 14, y); y += 8;
-  doc.setDrawColor(216,223,215); doc.line(14, y, 196, y); y += 10;
+  fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text('Generated ' + now.toLocaleString('en-GB') + '  ·  by ' + (session?session.name:'Manager'), P_L, y);
+  y += 8;
 
-  // Sales block
-  doc.setFillColor(227,239,231); doc.rect(14, y-5, 182, 26, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(46,107,70);
-  doc.text('SALES', 16, y+1); y += 7;
-  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(23,33,27);
-  doc.text('Total: GHS ' + a.total.toFixed(2) + '     Cash: GHS ' + a.cash.toFixed(2) + '     Card: GHS ' + a.card.toFixed(2), 16, y+1); y += 6;
-  doc.text('Checks: ' + a.checks + '     Days with sales: ' + a.days_covered + '     Avg/day: GHS ' + a.avgDay.toFixed(2), 16, y+1); y += 16;
+  // Big total-sales accent card
+  fFill(doc, PAL.green); doc.roundedRect(P_L, y, P_W, 28, 3, 3, 'F');
+  fInk(doc, [206,231,215]); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text('TOTAL SALES', P_L+8, y+9);
+  fInk(doc, PAL.white); doc.setFont('helvetica','bold'); doc.setFontSize(22);
+  doc.text('GHS ' + a.total.toFixed(2), P_L+8, y+21);
+  fInk(doc, [206,231,215]); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(a.checks + ' checks  ·  ' + a.days_covered + ' day(s) with sales', P_R-8, y+21, {align:'right'});
+  y += 34;
 
-  const heading = (txt)=>{ if(y>270){doc.addPage();y=20;} doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(23,33,27);doc.text(txt,14,y);y+=7; };
+  // Three small stat cards
+  const cardW = (P_W - 2*6) / 3;
+  const smallCard = (x, lbl, val, sub) => {
+    fFill(doc, PAL.greySoft); doc.roundedRect(x, y, cardW, 22, 3, 3, 'F');
+    fInk(doc, PAL.muted); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    doc.text(lbl, x+6, y+7);
+    fInk(doc, PAL.ink); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text(val, x+6, y+15);
+    if(sub){ fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.text(sub, x+6, y+19.5); }
+  };
+  smallCard(P_L,               'CASH', shortMoney(a.cash), (a.total?Math.round(a.cash/a.total*100):0)+'% of takings');
+  smallCard(P_L+cardW+6,       'CARD', shortMoney(a.card), (a.total?Math.round(a.card/a.total*100):0)+'% of takings');
+  smallCard(P_L+2*(cardW+6),   'AVG / DAY', shortMoney(a.avgDay), 'per day with checks');
+  y += 22 + 6;
+
+  smallCard(P_L,             'CHECKS', String(a.checks), 'in period');
+  smallCard(P_L+cardW+6,     'DAYS', String(a.days_covered), 'with sales');
+  smallCard(P_L+2*(cardW+6), 'OUT-OF-STOCK', String(a.outOccurrences), a.distinctOut+' item(s)');
+  y += 22 + 10;
+
+  // Daily sales chart
+  if(Object.keys(a.dayMap).length){
+    y = pSection(doc, 'Daily sales', y);
+    y = pBarChart(doc, P_L, y, P_W, 34, a.dayMap);
+    y += 2;
+  }
 
   // Procurement priorities
-  heading('Procurement priorities');
-  doc.setFont('helvetica','normal'); doc.setFontSize(11);
-  if(!a.items.length){ doc.setTextColor(92,104,94); doc.text('Nothing reported low or out this period.', 16, y); y+=8; }
-  else{
-    doc.setTextColor(92,104,94); doc.setFontSize(9);
-    doc.text('ITEM', 16, y); doc.text('OUT', 150, y); doc.text('LOW', 172, y); y+=2;
-    doc.setDrawColor(216,223,215); doc.line(14,y,196,y); y+=6;
-    doc.setTextColor(23,33,27); doc.setFontSize(11);
-    a.items.slice(0,25).forEach(it=>{
-      if(y>282){doc.addPage();y=20;}
-      doc.text(String(it.name).slice(0,60), 16, y);
-      doc.text(String(it.out), 152, y, {align:'left'});
-      doc.text(String(it.low), 174, y, {align:'left'});
-      y+=6.4;
+  y = pSection(doc, 'Procurement priorities', y);
+  if(!a.items.length){
+    fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+    doc.text('Nothing was reported low or out this period.', P_L, y+1); y += 9;
+  }else{
+    fInk(doc, PAL.muted); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    doc.text('ITEM', P_L, y); doc.text('OUT', 168, y, {align:'center'}); doc.text('LOW', 184, y, {align:'center'});
+    y += 2; fStroke(doc, PAL.line); doc.setLineWidth(0.3); doc.line(P_L, y, P_R, y); y += 6;
+    a.items.slice(0,28).forEach((it,idx)=>{
+      if(y > 282){ doc.addPage(); y = 22; }
+      if(idx % 2 === 0){ fFill(doc,[248,250,247]); doc.rect(P_L-1, y-4.6, P_W+2, 7.2, 'F'); }
+      fInk(doc, PAL.ink); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.text(String(it.name).slice(0,58), P_L, y);
+      pBadge(doc, 162, y, it.out, PAL.red, PAL.redSoft);
+      pBadge(doc, 178, y, it.low, PAL.amber, PAL.amberSoft);
+      y += 7.2;
     });
-    y+=6;
+    y += 6;
   }
 
-  // Repeat alerts
+  // Repeat alerts callout
   const streaks = currentStreaks(3);
   if(streaks.length){
-    heading('Active repeat alerts (order urgently)');
-    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(179,39,30);
-    streaks.forEach(s=>{ if(y>282){doc.addPage();y=20;} doc.text('•  '+s.name+'  ('+s.n+' checks in a row)', 16, y); y+=6.4; });
-    y+=6; doc.setTextColor(23,33,27);
+    y = pCallout(doc, y, streaks.map(s=>s.name + '  (' + s.n + ' checks in a row — order urgently)'), 'ACTIVE REPEAT ALERTS');
   }
 
-  // Staff activity
+  // Checks by staff
   const staffRows = Object.entries(a.staffMap).sort((x,y2)=>y2[1]-x[1]);
   if(staffRows.length){
-    heading('Checks by staff');
-    doc.setFont('helvetica','normal'); doc.setFontSize(11);
-    staffRows.forEach(([n,c])=>{ if(y>282){doc.addPage();y=20;} doc.text('•  '+n+' — '+c+' check'+(c>1?'s':''), 16, y); y+=6.4; });
+    y = pSection(doc, 'Checks by staff', y);
+    staffRows.forEach(([n,c])=>{
+      if(y > 284){ doc.addPage(); y = 22; }
+      fInk(doc, PAL.ink); doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+      doc.text(String(n), P_L+2, y);
+      fInk(doc, PAL.muted); doc.text(c + ' check' + (c>1?'s':''), P_R, y, {align:'right'});
+      y += 7;
+    });
   }
 
-  doc.setFontSize(9); doc.setTextColor(150,155,150);
-  doc.text('Generated by ' + biz + ' stock check system', 14, 290);
+  pFooterAll(doc, biz);
   return doc;
 }
 
@@ -1201,66 +1383,57 @@ function buildPdf(rec, reps){
   const doc = new jsPDF();
   const d = new Date(rec.ts);
   const biz = settings.biz || 'Restaurant';
-  let y = 20;
+  let y = pHeader(doc, biz, 'Shift-end stock check',
+    d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}));
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(23,33,27);
-  doc.text(biz, 14, y); y += 8;
-  doc.setFontSize(12); doc.setFont('helvetica','normal'); doc.setTextColor(92,104,94);
-  doc.text('Shift-end stock check report', 14, y); y += 10;
-  doc.setDrawColor(216,223,215); doc.line(14, y, 196, y); y += 9;
+  // Meta card
+  fFill(doc, PAL.greySoft); doc.roundedRect(P_L, y, P_W, 16, 3, 3, 'F');
+  fInk(doc, PAL.muted); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('DATE', P_L+7, y+6); doc.text('CHECKED BY', P_L+80, y+6); doc.text('ITEMS', P_R-7, y+6, {align:'right'});
+  fInk(doc, PAL.ink); doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+  doc.text(d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) + ', ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), P_L+7, y+12.5);
+  doc.text(String(rec.staff), P_L+80, y+12.5);
+  doc.text(String(rec.total), P_R-7, y+12.5, {align:'right'});
+  y += 16 + 8;
 
-  doc.setTextColor(23,33,27); doc.setFontSize(11);
-  doc.text('Date: ' + d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + '  ·  ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), 14, y); y += 7;
-  doc.text('Checked by: ' + rec.staff + '   ·   Items checked: ' + rec.total, 14, y); y += 10;
-
+  // Sales
   if(typeof rec.cash === 'number'){
-    doc.setFillColor(227,239,231);
-    doc.rect(14, y - 5, 182, 17, 'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(46,107,70);
-    doc.text('SALES TODAY', 16, y + 1); y += 7;
-    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(23,33,27);
-    doc.text('Cash: GHS ' + rec.cash.toFixed(2) + '     Card: GHS ' + rec.card.toFixed(2) + '     TOTAL: GHS ' + (rec.cash + rec.card).toFixed(2), 16, y + 1); y += 12;
+    y = pSalesCard(doc, y, rec.cash, rec.card, rec.cash + rec.card);
   }
-  y += 2;
 
-  const list = (title, items, rgb) => {
-    if(y > 265){ doc.addPage(); y = 20; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(13);
-    doc.setTextColor(rgb[0], rgb[1], rgb[2]);
-    doc.text(title, 14, y); y += 7;
-    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(23,33,27);
-    if(!items.length){ doc.text('None', 18, y); y += 7; }
-    items.forEach(t=>{
-      if(y > 280){ doc.addPage(); y = 20; }
-      doc.text('•  ' + t, 18, y); y += 6.5;
-    });
-    y += 6;
-  };
+  const out = rec.out||[], low = rec.low||[];
 
-  list('OUT OF STOCK (' + (rec.out||[]).length + ')', rec.out||[], [179,39,30]);
-  list('RUNNING LOW (' + (rec.low||[]).length + ')', rec.low||[], [185,122,12]);
+  // Status chips
+  const chipW = (P_W - 4) / 2;
+  pStatChip(doc, P_L, y, chipW, out.length, 'OUT OF STOCK', PAL.red, PAL.redSoft);
+  pStatChip(doc, P_L+chipW+4, y, chipW, low.length, 'RUNNING LOW', PAL.amber, PAL.amberSoft);
+  y += 20 + 10;
+
+  if(!out.length && !low.length){
+    fFill(doc, PAL.greenSoft); doc.roundedRect(P_L, y, P_W, 20, 3, 3, 'F');
+    fInk(doc, PAL.green); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.text('All items in stock', P_L+8, y+9);
+    fInk(doc, PAL.green); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text('Nothing to procure from this check.', P_L+8, y+15.5);
+    y += 28;
+  }
+
+  if(out.length){
+    y = pSection(doc, 'Out of stock  (' + out.length + ')', y);
+    out.forEach(it=>{ y = pItemRow(doc, y, it, PAL.red, PAL.redSoft); });
+    y += 5;
+  }
+  if(low.length){
+    y = pSection(doc, 'Running low  (' + low.length + ')', y);
+    low.forEach(it=>{ y = pItemRow(doc, y, it, PAL.amber, PAL.amberSoft); });
+    y += 5;
+  }
 
   if(reps.length){
-    if(y > 250){ doc.addPage(); y = 20; }
-    doc.setFillColor(251,227,225);
-    doc.rect(14, y - 5, 182, 9 + reps.length * 6.5, 'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(179,39,30);
-    doc.text('REPEAT ALERTS — low/out in 3+ consecutive checks', 16, y + 1); y += 8;
-    doc.setFont('helvetica','normal'); doc.setFontSize(11);
-    reps.forEach(r=>{
-      if(y > 280){ doc.addPage(); y = 20; }
-      doc.text('•  ' + r.item + '  (' + r.count + ' checks in a row — procure urgently)', 18, y); y += 6.5;
-    });
-    y += 6;
+    y = pCallout(doc, y, reps.map(r=>r.item + '  (' + r.count + ' checks in a row — procure urgently)'), 'REPEAT ALERTS');
   }
 
-  if(!(rec.out||[]).length && !(rec.low||[]).length){
-    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(46,107,70);
-    doc.text('All items in stock — nothing to procure.', 14, y); y += 8;
-  }
-
-  doc.setFontSize(9); doc.setTextColor(150,155,150);
-  doc.text('Generated by ' + biz + ' stock check system', 14, 290);
+  pFooterAll(doc, biz);
   return doc;
 }
 
@@ -1514,6 +1687,85 @@ $('resetIngBtn').onclick = ()=>{
     ingredients = JSON.parse(JSON.stringify(DEFAULT_INGREDIENTS));
     saveIngredients();
   }
+};
+
+/* ================= BULK IMPORT / EXPORT ================= */
+function parseBulk(text){
+  const cats = []; let cur = null;
+  text.split(/\r?\n/).forEach(raw=>{
+    const line = raw.trim();
+    if(!line || line.startsWith('//')) return;
+    let cat = null;
+    if(line.startsWith('#')) cat = line.replace(/^#+/,'').trim();
+    else if(/^\[.*\]$/.test(line)) cat = line.slice(1,-1).trim();
+    if(cat !== null){
+      cur = { name: cat || 'Ingredients', items: [] }; cats.push(cur); return;
+    }
+    if(!cur){ cur = { name:'Ingredients', items: [] }; cats.push(cur); }
+    const parts = line.split('|');
+    const name = parts[0].trim();
+    const guidance = parts.slice(1).join('|').trim();
+    if(name) cur.items.push({ name, guidance });
+  });
+  // merge duplicate category blocks
+  const merged = {};
+  cats.forEach(c=>{ (merged[c.name] = merged[c.name] || []).push(...c.items); });
+  return Object.entries(merged).map(([name, items])=>({ name, items }));
+}
+
+function applyBulk(parsed, mode){
+  let catCount = 0, itemCount = 0, guideCount = 0;
+  if(mode === 'replace'){ ingredients = {}; notes = {}; }
+  parsed.forEach(c=>{
+    if(!ingredients[c.name]){ ingredients[c.name] = []; }
+    catCount++;
+    c.items.forEach(it=>{
+      if(!ingredients[c.name].includes(it.name)){ ingredients[c.name].push(it.name); itemCount++; }
+      if(it.guidance){ notes[c.name + '||' + it.name] = it.guidance; guideCount++; }
+    });
+  });
+  store.set('ssc_ingredients', ingredients);
+  store.set('ssc_notes', notes);
+  statusMap = {};
+  renderIngManager();
+  renderCheckList();
+  return { catCount, itemCount, guideCount };
+}
+
+function currentListToText(){
+  const out = [];
+  Object.entries(ingredients).forEach(([cat, items])=>{
+    out.push('# ' + cat);
+    items.forEach(it=>{
+      const g = notes[cat + '||' + it];
+      out.push(g ? (it + ' | ' + g) : it);
+    });
+    out.push('');
+  });
+  return out.join('\n').trim();
+}
+
+$('bulkLoadBtn').onclick = ()=>{
+  $('bulkText').value = currentListToText();
+  $('bulkStatus').textContent = 'Loaded your current list into the box — edit it, then use Add/merge or Replace.';
+};
+
+$('bulkMergeBtn').onclick = ()=>{
+  const parsed = parseBulk($('bulkText').value);
+  if(!parsed.length){ $('bulkStatus').textContent = 'Nothing to import — paste a list into the box first.'; return; }
+  const n = parsed.reduce((s,c)=>s+c.items.length,0);
+  if(!confirm('Add/merge ' + n + ' item(s) across ' + parsed.length + ' category(ies) into your existing list?')) return;
+  const r = applyBulk(parsed, 'merge');
+  $('bulkStatus').textContent = 'Added ' + r.itemCount + ' new item(s), ' + r.guideCount + ' with guidance, across ' + r.catCount + ' category(ies). Existing items were kept.';
+};
+
+$('bulkReplaceBtn').onclick = ()=>{
+  const parsed = parseBulk($('bulkText').value);
+  if(!parsed.length){ $('bulkStatus').textContent = 'Nothing to import — paste a list into the box first.'; return; }
+  const n = parsed.reduce((s,c)=>s+c.items.length,0);
+  if(!confirm('REPLACE your entire ingredient list with ' + n + ' item(s) across ' + parsed.length + ' category(ies)? Your current list and its guidance will be removed.')) return;
+  const r = applyBulk(parsed, 'replace');
+  $('bulkStatus').textContent = 'List replaced: ' + r.itemCount + ' item(s), ' + r.guideCount + ' with guidance, across ' + r.catCount + ' category(ies).';
 };
 
 /* ================= INIT ================= */
